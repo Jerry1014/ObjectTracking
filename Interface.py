@@ -33,26 +33,31 @@ class MainWin(QtWidgets.QWidget):
             print(f'导入文件{dialog.selectedFiles()}')
 
         self.start_pause_button.setText('选定跟踪对象')
+        self.start_pause_button.clicked.disconnect(self.load_video)
         self.start_pause_button.clicked.connect(self.set_tracking_object)
 
     @Slot()
     def set_tracking_object(self):
         self.start_pause_button.setText('开始')
-        self.start_pause_button.clicked.connect(self.set_tracking_object)
+        self.start_pause_button.clicked.disconnect(self.set_tracking_object)
+        self.start_pause_button.clicked.connect(self.start_tracking)
 
     @Slot()
     def start_tracking(self):
         self.start_pause_button.setText('暂停')
+        self.start_pause_button.clicked.disconnect(self.start_tracking)
         self.start_pause_button.clicked.connect(self.pause_tracking)
 
     @Slot()
     def pause_tracking(self):
         self.start_pause_button.setText('开始')
+        self.start_pause_button.clicked.disconnect(self.pause_tracking)
         self.start_pause_button.clicked.connect(self.continue_tracking)
 
     @Slot()
     def continue_tracking(self):
         self.start_pause_button.setText('暂停')
+        self.start_pause_button.clicked.disconnect(self.continue_tracking)
         self.start_pause_button.clicked.connect(self.pause_tracking)
 
 
