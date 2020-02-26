@@ -1,8 +1,6 @@
 # -*- coding:utf-8 -*-
 import unittest
 
-from InterfaceController import Start
-
 
 class TestCaseForReadVideo(unittest.TestCase):
     from ReadVideo import ReadVideoFromFile, OpenVideoError, EndOfVideo
@@ -31,25 +29,6 @@ class TestCaseForReadVideo(unittest.TestCase):
             imshow('image', frame)
             waitKey(0)
         cap.release_init()
-
-    def test_for_playing_video(self):
-        from cv2.cv2 import imshow, waitKey
-        cap = TestCaseForReadVideo.ReadVideoFromFile()
-        start = Start()
-        start.run()
-        # cap.open_video('./resources/video/因为我穷.mp4')
-        # while cap.is_open():
-        #     try:
-        #         frame = cap.get_one_frame()
-        #         print(frame)
-        #     except TestCaseForReadVideo.EndOfVideo:
-        #         assert True
-        #         break
-        #     imshow('image', frame)
-        #     waitKey(0)
-        # cap.release_init()
-
-
 
 
 if __name__ == '__main__':
