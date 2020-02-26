@@ -6,8 +6,10 @@ from time import sleep
 
 from PySide2 import QtWidgets
 from PySide2.QtCore import QObject, Signal, QRunnable, QThreadPool, Slot
+from cv2.cv2 import cvtColor, COLOR_BGR2RGB
 
 from Interface import MainWin
+from ReadVideo import ReadVideoFromFile, EndOfVideo
 
 SUPPORTED_FORMATS = ('jpg', 'png')
 
@@ -15,27 +17,37 @@ SUPPORTED_FORMATS = ('jpg', 'png')
 class InterfaceSignalConnection(QObject):
     msg_signal = Signal(str)
     selected_filename = Slot(str)
-    pic_signal = Signal(str)
+    pic_signal = Signal(list)
 
 
 class InterfaceController(QRunnable):
-    def __init__(self):
+    def __init__(self, settings):
         super().__init__()
         self.signal_connection = InterfaceSignalConnection()
         self.signal_connection.selected_filename = self.after_selected_file
-        self.if_selected_file = False
-        self.selected_filename = None
+        self.settings = settings
 
     def run(self):
-        while not self.if_selected_file:
+        while not self.settings.get('if_selected_file', None):
             pass
-        print('000')
+
+        # test
+        cap = ReadVideoFromFile()
+        cap.open_video('./resources/video/因为我穷.mp4')
+        while cap.is_open():
+            try:
+                from numpy.core.multiarray import ndarray
+                frame: ndarray = cap.get_one_frame()
+                frame = cvtColor(frame, COLOR_BGR2RGB)
+                self.emit_pic(frame)
+            except EndOfVideo:
+                break
+        cap.release_init()
 
     @Slot()
     def after_selected_file(self, filename: str):
-        print(f'选择了文件{filename}')
-        self.if_selected_file = True
-        self.selected_filename = filename
+        self.settings['selected_filename'] = filename
+        self.settings['if_selected_file'] = True
 
     def emit_msg(self, msg: str):
         self.signal_connection.msg_signal.emit(msg)
@@ -47,7 +59,7 @@ class InterfaceController(QRunnable):
 class Start:
     def __init__(self):
         self.settings = {'supported_formats': SUPPORTED_FORMATS}
-        self.controller = InterfaceController()
+        self.controller = InterfaceController(self.settings)
 
     def run(self):
         app = QtWidgets.QApplication([])

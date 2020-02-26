@@ -2,6 +2,7 @@
 import sys
 from PySide2 import QtWidgets, QtGui
 from PySide2.QtCore import Slot, Signal
+from PySide2.QtGui import QPixmap, QImage
 
 
 class MainWin(QtWidgets.QWidget):
@@ -13,9 +14,10 @@ class MainWin(QtWidgets.QWidget):
         fixed_size = self.settings.get('fixed_size', (1000, 800))
         self.setFixedSize(*fixed_size[:2])
         self.settings['pause_sign'] = None
-        signal_connection.pic_signal.connect(self.set_pic)
-        signal_connection.msg_signal.connect(self.show_msg)
-        self.selected_file.connect(signal_connection.selected_filename)
+        if signal_connection is not None:
+            signal_connection.pic_signal.connect(self.set_pic)
+            signal_connection.msg_signal.connect(self.show_msg)
+            self.selected_file.connect(signal_connection.selected_filename)
 
         # 窗口部件
         self.image_win = QtWidgets.QLabel()
@@ -82,8 +84,14 @@ class MainWin(QtWidgets.QWidget):
         msg_box.exec_()
 
     @Slot()
-    def set_pic(self, pic):
-        print(pic)
+    def set_pic(self, image):
+        """
+        显示图片
+        :param image: 一定要是ndarray，RGB888格式
+        """
+        h, w, ch = image.shape
+        self.setFixedSize(w, h)
+        self.image_win.setPixmap(QPixmap.fromImage(QImage(image, w, h, ch * w, QImage.Format_RGB888)))
 
 
 if __name__ == "__main__":
@@ -91,7 +99,7 @@ if __name__ == "__main__":
 
     test_settings = {'supported_formats': ('jpg')}
 
-    widget = MainWin(test_settings)
+    widget = MainWin(test_settings, None)
     widget.show()
 
     sys.exit(app.exec_())
