@@ -34,6 +34,9 @@ class MainWin(QtWidgets.QWidget):
 
     @Slot()
     def load_video(self):
+        """
+        重要！！！ 对文件的类型等检查在此完成
+        """
         while True:
             dialog = QtWidgets.QFileDialog()
             dialog.setFileMode(QtWidgets.QFileDialog.ExistingFile)

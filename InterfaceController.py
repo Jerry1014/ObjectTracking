@@ -15,28 +15,21 @@ class InterfaceSignalConnection(QObject):
 
 
 class InterfaceController(QRunnable):
-    def __init__(self, settings):
+    def __init__(self, settings, frame_list):
         super().__init__()
         self.signal_connection = InterfaceSignalConnection()
         self.signal_connection.selected_filename = self.after_selected_file
         self.settings = settings
+        self.frame_list = frame_list
 
     def run(self):
         while not self.settings.get('if_selected_file', None):
             pass
 
-        # test
-        cap = ReadVideoFromFile()
-        cap.open_video('./resources/video/因为我穷.mp4')
-        while cap.is_open():
-            try:
-                from numpy.core.multiarray import ndarray
-                frame: ndarray = cap.get_one_frame()
-                frame = cvtColor(frame, COLOR_BGR2RGB)
-                self.emit_pic(frame)
-            except EndOfVideo:
-                break
-        cap.release_init()
+        while not self.settings['end_sign']:
+            if self.frame_list:
+                # 此处存在简略，忽略帧的顺序问题，同时没有错误提示
+                self.emit_pic(self.frame_list.pop())
 
     @Slot()
     def after_selected_file(self, filename: str):
