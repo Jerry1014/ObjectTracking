@@ -1,17 +1,11 @@
 """
 界面与模型控制之间的中间件
 """
-import sys
-from time import sleep
 
-from PySide2 import QtWidgets
-from PySide2.QtCore import QObject, Signal, QRunnable, QThreadPool, Slot
+from PySide2.QtCore import QObject, Signal, QRunnable, Slot
 from cv2.cv2 import cvtColor, COLOR_BGR2RGB
 
-from Interface import MainWin
 from ReadVideo import ReadVideoFromFile, EndOfVideo
-
-SUPPORTED_FORMATS = ('jpg', 'png')
 
 
 class InterfaceSignalConnection(QObject):
@@ -54,22 +48,3 @@ class InterfaceController(QRunnable):
 
     def emit_pic(self, pic):
         self.signal_connection.pic_signal.emit(pic)
-
-
-class Start:
-    def __init__(self):
-        self.settings = {'supported_formats': SUPPORTED_FORMATS}
-        self.controller = InterfaceController(self.settings)
-
-    def run(self):
-        app = QtWidgets.QApplication([])
-
-        widget = MainWin(self.settings, self.controller.signal_connection)
-        widget.show()
-        QThreadPool.globalInstance().start(self.controller)
-
-        sys.exit(app.exec_())
-
-
-if __name__ == '__main__':
-    Start().run()
