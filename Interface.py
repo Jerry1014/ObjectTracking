@@ -1,12 +1,14 @@
 # -*- coding:utf-8 -*-
 import sys
-from PySide2 import QtWidgets, QtGui
-from PySide2.QtCore import Slot, Signal
-from PySide2.QtGui import QPixmap, QImage
+
+from PySide2 import QtWidgets
+from PySide2.QtCore import Slot, Signal, Qt, QRect
+from PySide2.QtGui import QPixmap, QImage, QMouseEvent, QPaintEvent, QPainter
 
 
 class MainWin(QtWidgets.QWidget):
     selected_file = Signal(str)
+    after_setting_tracking_object = Signal(bool)
 
     def __init__(self, settings: dict, signal_connection):
         super().__init__()
@@ -14,6 +16,8 @@ class MainWin(QtWidgets.QWidget):
         fixed_size = self.settings.get('fixed_size', (1000, 800))
         self.setFixedSize(*fixed_size[:2])
         self.settings['pause_sign'] = None
+        self.if_setting_tracking_object_step = None
+        self.paint_rect = None
         if signal_connection is not None:
             signal_connection.pic_signal.connect(self.set_pic)
             signal_connection.msg_signal.connect(self.show_msg)
@@ -31,6 +35,7 @@ class MainWin(QtWidgets.QWidget):
 
         # 信号 槽
         self.start_pause_button.clicked.connect(self.load_video)
+        self.after_setting_tracking_object.connect(self.pause_tracking)
 
     @Slot()
     def load_video(self):
@@ -48,14 +53,36 @@ class MainWin(QtWidgets.QWidget):
                 self.selected_file.emit(selected_filename)
                 break
 
-        self.start_pause_button.setText('选定跟踪对象')
+        self.start_pause_button.setText('请用鼠标选定跟踪对象')
+        self.start_pause_button.setEnabled(False)
+        self.if_setting_tracking_object_step = True
         self.start_pause_button.clicked.disconnect(self.load_video)
-        self.start_pause_button.clicked.connect(self.set_tracking_object)
 
-    @Slot()
-    def set_tracking_object(self):
+    def mousePressEvent(self, event: QMouseEvent):
+        if self.if_setting_tracking_object_step:
+            self.paint_rect = (*event.localPos().toTuple(), 0, 0)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        if self.if_setting_tracking_object_step:
+            end_pos = event.localPos().toTuple()
+            self.paint_rect = (*self.paint_rect[:2], end_pos[0] - self.paint_rect[0], end_pos[1] - self.paint_rect[1])
+            self.repaint()
+            if self.show_msg('确认选择？') == QtWidgets.QMessageBox.Ok:
+                self.if_setting_tracking_object_step = False
+                self.start_pause_button.setEnabled(True)
+                self.after_setting_tracking_object.emit(True)
+
+    def paintEvent(self, event: QPaintEvent):
+        if self.paint_rect:
+            painter = QPainter(self)
+            painter.setPen(Qt.blue)
+            painter.drawRect(QRect(*self.paint_rect))
+
+    @Slot(bool)
+    def pause_tracking(self, if_just_start: bool):
         self.start_pause_button.setText('开始')
-        self.start_pause_button.clicked.disconnect(self.set_tracking_object)
+        if not if_just_start:
+            self.start_pause_button.clicked.disconnect(self.pause_tracking)
         self.start_pause_button.clicked.connect(self.start_tracking)
         self.settings['pause_sign'] = True
 
@@ -66,25 +93,13 @@ class MainWin(QtWidgets.QWidget):
         self.start_pause_button.clicked.connect(self.pause_tracking)
         self.settings['pause_sign'] = False
 
-    @Slot()
-    def pause_tracking(self):
-        self.start_pause_button.setText('开始')
-        self.start_pause_button.clicked.disconnect(self.pause_tracking)
-        self.start_pause_button.clicked.connect(self.continue_tracking)
-        self.settings['pause_sign'] = True
-
-    @Slot()
-    def continue_tracking(self):
-        self.start_pause_button.setText('暂停')
-        self.start_pause_button.clicked.disconnect(self.continue_tracking)
-        self.start_pause_button.clicked.connect(self.pause_tracking)
-        self.settings['pause_sign'] = False
-
     @Slot(str)
     def show_msg(self, msg: str):
         msg_box = QtWidgets.QMessageBox()
         msg_box.setText(msg)
-        msg_box.exec_()
+        msg_box.addButton(QtWidgets.QMessageBox.Ok)
+        msg_box.addButton(QtWidgets.QMessageBox.Cancel)
+        return msg_box.exec_()
 
     @Slot()
     def set_pic(self, image):

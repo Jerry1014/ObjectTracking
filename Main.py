@@ -15,7 +15,7 @@ SUPPORTED_FORMATS = ('jpg', 'png')
 
 class Start:
     def __init__(self):
-        self.settings = {'supported_formats': SUPPORTED_FORMATS, 'end_sign': False}
+        self.settings = {'supported_formats': SUPPORTED_FORMATS, 'end_sign': False, 'pause_sign': False}
         self.frame_list = list()
         self.controller = InterfaceController(self.settings, self.frame_list)
         self.model_controller = ModelController(self.settings, self.frame_list)

@@ -27,7 +27,7 @@ class InterfaceController(QRunnable):
             pass
 
         while not self.settings['end_sign']:
-            if self.frame_list:
+            if not self.settings['pause_sign'] and self.frame_list:
                 # 此处存在简略，忽略帧的顺序问题，同时没有错误提示
                 self.emit_pic(self.frame_list.pop())
 
