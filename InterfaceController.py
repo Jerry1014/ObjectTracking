@@ -12,6 +12,7 @@ class InterfaceSignalConnection(QObject):
     msg_signal = Signal(str)
     selected_filename = Slot(str)
     pic_signal = Signal(list)
+    signal_for_rect = Signal(list)
 
 
 class InterfaceController(QRunnable):

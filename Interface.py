@@ -5,26 +5,30 @@ from PySide2 import QtWidgets
 from PySide2.QtCore import Slot, Signal, Qt, QRect
 from PySide2.QtGui import QPixmap, QImage, QMouseEvent, QPaintEvent, QPainter
 
+from InterfaceController import InterfaceSignalConnection
+
 
 class MainWin(QtWidgets.QWidget):
-    selected_file = Signal(str)
-    after_setting_tracking_object = Signal(bool)
+    signal_selected_file = Signal(str)
+    signal_after_setting_tracking_object = Signal()
+    signal_for_switch_record_mouse_pos = Signal()
+    signal_for_switch_paint = Signal()
 
     def __init__(self, settings: dict, signal_connection):
+        """
+        :param settings: dict 一些设置项，未来可能换为设置类
+        :param signal_connection: 用来连接的外部信号，未做信号存在及未来升级的设计优化
+        """
         super().__init__()
+        # 设置
         self.settings = settings
         fixed_size = self.settings.get('fixed_size', (1000, 800))
         self.setFixedSize(*fixed_size[:2])
         self.settings['pause_sign'] = None
-        self.if_setting_tracking_object_step = None
-        self.paint_rect = None
-        if signal_connection is not None:
-            signal_connection.pic_signal.connect(self.set_pic)
-            signal_connection.msg_signal.connect(self.show_msg)
-            self.selected_file.connect(signal_connection.selected_filename)
 
         # 窗口部件
-        self.image_win = QtWidgets.QLabel()
+        self.image_win = MyImageLabel(self.signal_for_switch_record_mouse_pos, self.signal_for_switch_paint,
+                                      signal_connection.signal_for_rect, self.signal_after_setting_tracking_object)
         self.start_pause_button = QtWidgets.QPushButton('载入视频')
 
         # 布局
@@ -33,15 +37,20 @@ class MainWin(QtWidgets.QWidget):
         self.layout.addWidget(self.start_pause_button)
         self.setLayout(self.layout)
 
-        # 信号 槽
-        self.start_pause_button.clicked.connect(self.load_video)
-        self.after_setting_tracking_object.connect(self.pause_tracking)
+        # 信号/槽相关
+        self.start_pause_button.clicked.connect(self.set_filename)
+        self.signal_after_setting_tracking_object.connect(self.setting_tracking_object)
+        if signal_connection is not None:
+            signal_connection.pic_signal.connect(self.set_pic)
+            signal_connection.msg_signal.connect(self.show_msg)
+            self.signal_selected_file.connect(signal_connection.selected_filename)
 
     @Slot()
-    def load_video(self):
+    def set_filename(self):
         """
-        重要！！！ 对文件的类型等检查在此完成
+        用户选择视频文件，并对选择的文件做验证
         """
+        # 重要！！！ 对文件的类型等检查在此完成
         while True:
             dialog = QtWidgets.QFileDialog()
             dialog.setFileMode(QtWidgets.QFileDialog.ExistingFile)
@@ -50,44 +59,39 @@ class MainWin(QtWidgets.QWidget):
                 if selected_filename.split('.')[-1] not in self.settings['supported_formats']:
                     self.show_msg('不支持的文件格式')
                     continue
-                self.selected_file.emit(selected_filename)
+                self.signal_selected_file.emit(selected_filename)
                 break
 
         self.start_pause_button.setText('请用鼠标选定跟踪对象')
         self.start_pause_button.setEnabled(False)
-        self.if_setting_tracking_object_step = True
-        self.start_pause_button.clicked.disconnect(self.load_video)
+        self.signal_for_switch_paint.emit()
+        self.signal_for_switch_record_mouse_pos.emit()
 
-    def mousePressEvent(self, event: QMouseEvent):
-        if self.if_setting_tracking_object_step:
-            self.paint_rect = (*event.localPos().toTuple(), 0, 0)
+    @Slot()
+    def setting_tracking_object(self):
+        """
+        用户选择追踪对象后的处理
+        """
+        if self.show_msg('是否确认？') == QtWidgets.QMessageBox.Ok:
+            self.signal_for_switch_record_mouse_pos.emit()
+            self.start_pause_button.setEnabled(True)
+            self.start_pause_button.clicked.disconnect(self.set_filename)
+            self.start_pause_button.clicked.connect(self.pause_tracking)
+            self.start_pause_button.click()
+            # todo 将选择的图片放置于设置中
 
-    def mouseReleaseEvent(self, event: QMouseEvent):
-        if self.if_setting_tracking_object_step:
-            end_pos = event.localPos().toTuple()
-            self.paint_rect = (*self.paint_rect[:2], end_pos[0] - self.paint_rect[0], end_pos[1] - self.paint_rect[1])
-            self.repaint()
-            if self.show_msg('确认选择？') == QtWidgets.QMessageBox.Ok:
-                self.if_setting_tracking_object_step = False
-                self.start_pause_button.setEnabled(True)
-                self.after_setting_tracking_object.emit(True)
-
-    def paintEvent(self, event: QPaintEvent):
-        if self.paint_rect:
-            painter = QPainter(self)
-            painter.setPen(Qt.blue)
-            painter.drawRect(QRect(*self.paint_rect))
-
-    @Slot(bool)
-    def pause_tracking(self, if_just_start: bool):
+    @Slot()
+    def pause_tracking(self):
         self.start_pause_button.setText('开始')
-        if not if_just_start:
-            self.start_pause_button.clicked.disconnect(self.pause_tracking)
+        self.start_pause_button.clicked.disconnect(self.pause_tracking)
         self.start_pause_button.clicked.connect(self.start_tracking)
         self.settings['pause_sign'] = True
 
     @Slot()
     def start_tracking(self):
+        """
+        用户按下开始的处理
+        """
         self.start_pause_button.setText('暂停')
         self.start_pause_button.clicked.disconnect(self.start_tracking)
         self.start_pause_button.clicked.connect(self.pause_tracking)
@@ -95,6 +99,10 @@ class MainWin(QtWidgets.QWidget):
 
     @Slot(str)
     def show_msg(self, msg: str):
+        """
+        展示提示框，未来将优化按键及消息类型
+        :param msg: str 提示的信息
+        """
         msg_box = QtWidgets.QMessageBox()
         msg_box.setText(msg)
         msg_box.addButton(QtWidgets.QMessageBox.Ok)
@@ -112,12 +120,69 @@ class MainWin(QtWidgets.QWidget):
         self.image_win.setPixmap(QPixmap.fromImage(QImage(image, w, h, ch * w, QImage.Format_RGB888)))
 
 
+class MyImageLabel(QtWidgets.QLabel):
+    def __init__(self, signal_for_switch_record_mouse_pos: Signal, signal_for_switch_paint: Signal,
+                 signal_for_rect: Signal, signal_after_setting_tracking_object: Signal):
+        """
+        特别定义的Label，可以用鼠标单击画矩形
+        :param signal_for_switch_record_mouse_pos: 改变是否记录鼠标按下释放
+        :param signal_for_switch_paint: 改变是否绘制矩形框
+        :param signal_for_rect: signal(list rect(x,y,w,h)) 修改绘制的矩形的形状和大小
+        :param signal_after_setting_tracking_object: 当鼠标松开后且处在记录鼠标按下释放时，通过其发出信号
+        """
+        super().__init__()
+        self.paint_rect = None
+        self.if_record_mouse_pos = False
+        self.if_paint = False
+        signal_for_switch_record_mouse_pos.connect(self.switch_mouse_pos_record)
+        signal_for_switch_paint.connect(self.switch_paint)
+        signal_for_rect.connect(self.change_paint_rect)
+        self.signal_after_setting_tracking_object = signal_after_setting_tracking_object
+
+    @Slot()
+    def switch_mouse_pos_record(self):
+        self.if_record_mouse_pos = self.if_record_mouse_pos ^ True
+
+    @Slot()
+    def switch_paint(self):
+        self.if_paint = self.if_paint ^ True
+
+    @Slot()
+    def change_paint_rect(self, rect):
+        """
+        用于改变绘制的矩形的位置和大小
+        :param rect: 矩形的x,y,w,h 若不足四位，会补0（这样就显示不出来或者不正常了） 超过四位仅取前四位
+        """
+        while len(rect) < 4:
+            rect.append(0)
+        self.paint_rect = rect[:4]
+
+    @Slot()
+    def mousePressEvent(self, event: QMouseEvent):
+        if self.if_record_mouse_pos:
+            self.paint_rect = (*event.localPos().toTuple(), 0, 0)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        if self.if_record_mouse_pos:
+            end_pos = event.localPos().toTuple()
+            self.paint_rect = (*self.paint_rect[:2], end_pos[0] - self.paint_rect[0], end_pos[1] - self.paint_rect[1])
+            self.repaint()
+            self.signal_after_setting_tracking_object.emit()
+
+    def paintEvent(self, event: QPaintEvent):
+        super().paintEvent(event)
+        if self.if_paint and self.paint_rect:
+            painter = QPainter(self)
+            painter.setPen(Qt.blue)
+            painter.drawRect(QRect(*self.paint_rect))
+
+
 if __name__ == "__main__":
     app = QtWidgets.QApplication([])
 
     test_settings = {'supported_formats': ('jpg')}
 
-    widget = MainWin(test_settings, None)
+    widget = MainWin(test_settings, InterfaceSignalConnection())
     widget.show()
 
     sys.exit(app.exec_())
