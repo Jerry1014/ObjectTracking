@@ -38,14 +38,15 @@ class MainWin(QtWidgets.QWidget):
         self.setLayout(self.layout)
 
         # 信号/槽相关
-        self.start_pause_button.clicked.connect(self.set_filename)
+        # self.start_pause_button.clicked.connect(self.set_filename)
         self.signal_after_setting_tracking_object.connect(self.setting_tracking_object)
         if signal_connection is not None:
             signal_connection.pic_signal.connect(self.set_pic)
             signal_connection.msg_signal.connect(self.show_msg)
             self.signal_selected_file.connect(signal_connection.selected_filename)
+        self.set_filename()
 
-    @Slot()
+    # @Slot()
     def set_filename(self):
         """
         用户选择视频文件，并对选择的文件做验证
@@ -62,6 +63,7 @@ class MainWin(QtWidgets.QWidget):
                 self.signal_selected_file.emit(selected_filename)
                 break
 
+        # self.start_pause_button.clicked.disconnect(self.set_filename)
         self.start_pause_button.setText('请用鼠标选定跟踪对象')
         self.start_pause_button.setEnabled(False)
         self.signal_for_switch_paint.emit()
@@ -75,7 +77,6 @@ class MainWin(QtWidgets.QWidget):
         if self.show_msg('是否确认？') == QtWidgets.QMessageBox.Ok:
             self.signal_for_switch_record_mouse_pos.emit()
             self.start_pause_button.setEnabled(True)
-            self.start_pause_button.clicked.disconnect(self.set_filename)
             self.start_pause_button.clicked.connect(self.pause_tracking)
             self.start_pause_button.click()
             # todo 将选择的图片放置于设置中
