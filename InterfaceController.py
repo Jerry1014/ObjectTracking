@@ -22,15 +22,23 @@ class InterfaceController(QRunnable):
         self.signal_connection.selected_filename = self.after_selected_file
         self.settings = settings
         self.frame_list = frame_list
+        self.first_frame_sign = True
 
     def run(self):
         while not self.settings.get('if_selected_file', None):
             pass
 
         while not self.settings['end_sign']:
+            print(self.settings['pause_sign'])
             if not self.settings['pause_sign'] and self.frame_list:
                 # 此处存在简略，忽略帧的顺序问题，同时没有错误提示
-                self.emit_pic(self.frame_list.pop())
+                frame = self.frame_list[0]
+                self.frame_list.remove(frame)
+                self.emit_pic(frame)
+                if self.first_frame_sign:
+                    self.settings['first_frame'] = frame
+                    self.first_frame_sign = False
+                    self.settings['pause_sign'] = True
 
     @Slot()
     def after_selected_file(self, filename: str):

@@ -18,7 +18,19 @@ class ModelController(QRunnable):
         while not self.settings.get('if_selected_file', None):
             pass
 
-        from cv2.cv2 import cvtColor, imread, COLOR_BGR2RGB
-        image = imread(self.settings['selected_filename'])
-        image = cvtColor(image, COLOR_BGR2RGB)
-        self.frame_list.append(image)
+        from MonkeyTest import TestCaseForReadVideo
+        cap = TestCaseForReadVideo.ReadVideoFromFile()
+        cap.open_video(self.settings['selected_filename'])
+        while cap.is_open():
+            try:
+                frame = cap.get_one_frame()
+                from cv2.cv2 import cvtColor
+                from cv2.cv2 import COLOR_BGR2RGB
+                image = cvtColor(frame, COLOR_BGR2RGB)
+                self.frame_list.append(image)
+                while len(self.frame_list) > 10:
+                    pass
+            except TestCaseForReadVideo.EndOfVideo:
+                assert True
+                break
+        cap.release_init()

@@ -10,7 +10,7 @@ from Interface import MainWin
 from InterfaceController import InterfaceController
 from ModelController import ModelController
 
-SUPPORTED_FORMATS = ('jpg', 'png')
+SUPPORTED_FORMATS = ('mp4')
 
 
 class Start:

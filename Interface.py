@@ -24,7 +24,7 @@ class MainWin(QtWidgets.QWidget):
         self.settings = settings
         fixed_size = self.settings.get('fixed_size', (1000, 800))
         self.setFixedSize(*fixed_size[:2])
-        self.settings['pause_sign'] = None
+        self.settings['pause_sign'] = False
 
         # 窗口部件
         self.image_win = MyImageLabel(self.signal_for_switch_record_mouse_pos, self.signal_for_switch_paint,
@@ -38,7 +38,6 @@ class MainWin(QtWidgets.QWidget):
         self.setLayout(self.layout)
 
         # 信号/槽相关
-        # self.start_pause_button.clicked.connect(self.set_filename)
         self.signal_after_setting_tracking_object.connect(self.setting_tracking_object)
         if signal_connection is not None:
             signal_connection.pic_signal.connect(self.set_pic)
@@ -46,24 +45,21 @@ class MainWin(QtWidgets.QWidget):
             self.signal_selected_file.connect(signal_connection.selected_filename)
         self.set_filename()
 
-    # @Slot()
     def set_filename(self):
         """
         用户选择视频文件，并对选择的文件做验证
         """
         # 重要！！！ 对文件的类型等检查在此完成
-        while True:
-            dialog = QtWidgets.QFileDialog()
-            dialog.setFileMode(QtWidgets.QFileDialog.ExistingFile)
-            if dialog.exec_():
-                selected_filename: str = dialog.selectedFiles()[0]
-                if selected_filename.split('.')[-1] not in self.settings['supported_formats']:
-                    self.show_msg('不支持的文件格式')
-                    continue
-                self.signal_selected_file.emit(selected_filename)
-                break
+        dialog = QtWidgets.QFileDialog()
+        dialog.setFileMode(QtWidgets.QFileDialog.ExistingFile)
+        if dialog.exec_():
+            selected_filename: str = dialog.selectedFiles()[0]
+            if selected_filename.split('.')[-1] not in self.settings['supported_formats']:
+                self.show_msg('不支持的文件格式')
+                # todo 当文件类型不正确时,会直接退出,未来将优化这个体验
+                sys.exit(0)
+            self.signal_selected_file.emit(selected_filename)
 
-        # self.start_pause_button.clicked.disconnect(self.set_filename)
         self.start_pause_button.setText('请用鼠标选定跟踪对象')
         self.start_pause_button.setEnabled(False)
         self.signal_for_switch_paint.emit()
@@ -75,11 +71,11 @@ class MainWin(QtWidgets.QWidget):
         用户选择追踪对象后的处理
         """
         if self.show_msg('是否确认？') == QtWidgets.QMessageBox.Ok:
+            self.settings['tracking_object_rect'] = self.image_win.paint_rect
             self.signal_for_switch_record_mouse_pos.emit()
             self.start_pause_button.setEnabled(True)
             self.start_pause_button.clicked.connect(self.pause_tracking)
             self.start_pause_button.click()
-            # todo 将选择的图片放置于设置中
 
     @Slot()
     def pause_tracking(self):
@@ -152,11 +148,11 @@ class MyImageLabel(QtWidgets.QLabel):
     def change_paint_rect(self, rect):
         """
         用于改变绘制的矩形的位置和大小
-        :param rect: 矩形的x,y,w,h 若不足四位，会补0（这样就显示不出来或者不正常了） 超过四位仅取前四位
+        :param rect: tuple 矩形的x,y,w,h
         """
-        while len(rect) < 4:
-            rect.append(0)
-        self.paint_rect = rect[:4]
+        if len(rect) < 4 or (type(rect) != tuple or type(rect) != list):
+            rect = (0, 0, 0, 0)
+        self.paint_rect = tuple(rect)
 
     @Slot()
     def mousePressEvent(self, event: QMouseEvent):
