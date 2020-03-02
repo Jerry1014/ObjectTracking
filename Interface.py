@@ -57,6 +57,7 @@ class MainWin(QtWidgets.QWidget):
                 selected_filename: str = dialog.selectedFiles()[0]
                 if selected_filename.split('.')[-1] not in self.settings['supported_formats']:
                     self.show_msg('不支持的文件格式')
+                    continue
                 self.signal_selected_file.emit(selected_filename)
                 break
             else:

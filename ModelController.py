@@ -5,15 +5,17 @@ from queue import Queue
 
 from PySide2.QtCore import QRunnable
 
+from Model import BaseModel
 from ReadVideo import ReadVideoFromFile, EndOfVideo
 from cv2.cv2 import cvtColor, COLOR_BGR2RGB
 
 
 class ModelController(QRunnable):
-    def __init__(self, settings, frame_queue: Queue):
+    def __init__(self, settings, frame_queue: Queue, model_class):
         super().__init__()
         self.video_reader = ReadVideoFromFile()
-        self.model = TestModel()
+        self.model_class = model_class
+        self.model = model_class(None)
         self.settings = settings
         self.frame_queue = frame_queue
 
@@ -22,24 +24,13 @@ class ModelController(QRunnable):
             pass
 
         self.video_reader.open_video(self.settings['selected_filename'])
+        # todo 未做将需要追踪的模板传入模型类
         while self.video_reader.is_open():
             try:
                 frame = self.video_reader.get_one_frame()
                 image = cvtColor(frame, COLOR_BGR2RGB)
-                rect = self.model.get_rect()
+                rect = self.model.get_tracking_result(image)
                 self.frame_queue.put((image, rect))
             except EndOfVideo:
-                assert True
                 break
         self.video_reader.release_init()
-
-
-class TestModel:
-    def __init__(self):
-        self.x = 0
-        self.y = 0
-
-    def get_rect(self):
-        self.x += 1
-        self.y += 1
-        return self.x % 300, self.y % 300, 100, 100
