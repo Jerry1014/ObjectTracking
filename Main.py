@@ -12,7 +12,7 @@ from InterfaceController import InterfaceController
 from Model import TestModel
 from ModelController import ModelController
 
-SUPPORTED_FORMATS = ('mp4','mkv')
+SUPPORTED_FORMATS = ('mp4', 'mkv')
 
 
 class Start:

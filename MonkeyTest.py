@@ -3,7 +3,7 @@ import unittest
 
 
 class TestCaseForReadVideo(unittest.TestCase):
-    from ReadVideo import ReadVideoFromFile, OpenVideoError, EndOfVideo
+    from ReadVideo import ReadVideoFromFile, EndOfVideo
 
     def test_for_read_video(self):
         from cv2.cv2 import imshow, waitKey

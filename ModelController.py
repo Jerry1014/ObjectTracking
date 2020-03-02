@@ -4,10 +4,9 @@
 from queue import Queue
 
 from PySide2.QtCore import QRunnable
-
-from Model import BaseModel
-from ReadVideo import ReadVideoFromFile, EndOfVideo
 from cv2.cv2 import cvtColor, COLOR_BGR2RGB
+
+from ReadVideo import ReadVideoFromFile, EndOfVideo
 
 
 class ModelController(QRunnable):

@@ -5,8 +5,6 @@ from PySide2 import QtWidgets
 from PySide2.QtCore import Slot, Signal, Qt, QRect
 from PySide2.QtGui import QPixmap, QImage, QMouseEvent, QPaintEvent, QPainter
 
-from InterfaceController import InterfaceSignalConnection
-
 
 class MainWin(QtWidgets.QWidget):
     signal_selected_file = Signal(str)

@@ -4,9 +4,6 @@
 from queue import Queue, Empty
 
 from PySide2.QtCore import QObject, Signal, QRunnable, Slot
-from cv2.cv2 import cvtColor, COLOR_BGR2RGB
-
-from ReadVideo import ReadVideoFromFile, EndOfVideo
 
 
 class InterfaceSignalConnection(QObject):
