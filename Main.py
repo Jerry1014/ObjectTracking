@@ -2,6 +2,7 @@
 主文件，负责连接个部分和启动
 """
 import sys
+from queue import Queue
 
 from PySide2 import QtWidgets
 from PySide2.QtCore import QThreadPool
@@ -16,9 +17,9 @@ SUPPORTED_FORMATS = ('mp4')
 class Start:
     def __init__(self):
         self.settings = {'supported_formats': SUPPORTED_FORMATS, 'end_sign': False, 'pause_sign': False}
-        self.frame_list = list()
-        self.controller = InterfaceController(self.settings, self.frame_list)
-        self.model_controller = ModelController(self.settings, self.frame_list)
+        self.frame_queue = Queue(24)
+        self.controller = InterfaceController(self.settings, self.frame_queue)
+        self.model_controller = ModelController(self.settings, self.frame_queue)
 
     def run(self):
         app = QtWidgets.QApplication([])

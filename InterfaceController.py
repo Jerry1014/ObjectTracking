@@ -1,6 +1,7 @@
 """
 界面与模型控制之间的中间件
 """
+from queue import Queue, Empty
 
 from PySide2.QtCore import QObject, Signal, QRunnable, Slot
 from cv2.cv2 import cvtColor, COLOR_BGR2RGB
@@ -16,12 +17,16 @@ class InterfaceSignalConnection(QObject):
 
 
 class InterfaceController(QRunnable):
-    def __init__(self, settings, frame_list):
+    def __init__(self, settings, frame_queue: Queue):
+        """
+        :param settings: 设置字典
+        :param frame_queue: 帧队列
+        """
         super().__init__()
         self.signal_connection = InterfaceSignalConnection()
         self.signal_connection.selected_filename = self.after_selected_file
         self.settings = settings
-        self.frame_list = frame_list
+        self.frame_queue = frame_queue
         self.first_frame_sign = True
 
     def run(self):
@@ -29,16 +34,18 @@ class InterfaceController(QRunnable):
             pass
 
         while not self.settings['end_sign']:
-            print(self.settings['pause_sign'])
-            if not self.settings['pause_sign'] and self.frame_list:
-                # 此处存在简略，忽略帧的顺序问题，同时没有错误提示
-                frame = self.frame_list[0]
-                self.frame_list.remove(frame)
-                self.emit_pic(frame)
+            if not self.settings['pause_sign']:
+                try:
+                    frame = self.frame_queue.get(timeout=1)
+                except Empty:
+                    continue
+                self.emit_pic(frame[0])
                 if self.first_frame_sign:
-                    self.settings['first_frame'] = frame
+                    self.settings['first_frame'] = frame[0]
                     self.first_frame_sign = False
                     self.settings['pause_sign'] = True
+                else:
+                    self.emit_rect(frame[1])
 
     @Slot()
     def after_selected_file(self, filename: str):
@@ -50,3 +57,6 @@ class InterfaceController(QRunnable):
 
     def emit_pic(self, pic):
         self.signal_connection.pic_signal.emit(pic)
+
+    def emit_rect(self, rect):
+        self.signal_connection.signal_for_rect.emit(tuple(rect))

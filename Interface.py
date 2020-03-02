@@ -50,15 +50,17 @@ class MainWin(QtWidgets.QWidget):
         用户选择视频文件，并对选择的文件做验证
         """
         # 重要！！！ 对文件的类型等检查在此完成
-        dialog = QtWidgets.QFileDialog()
-        dialog.setFileMode(QtWidgets.QFileDialog.ExistingFile)
-        if dialog.exec_():
-            selected_filename: str = dialog.selectedFiles()[0]
-            if selected_filename.split('.')[-1] not in self.settings['supported_formats']:
-                self.show_msg('不支持的文件格式')
-                # todo 当文件类型不正确时,会直接退出,未来将优化这个体验
+        while True:
+            dialog = QtWidgets.QFileDialog()
+            dialog.setFileMode(QtWidgets.QFileDialog.ExistingFile)
+            if dialog.exec_():
+                selected_filename: str = dialog.selectedFiles()[0]
+                if selected_filename.split('.')[-1] not in self.settings['supported_formats']:
+                    self.show_msg('不支持的文件格式')
+                self.signal_selected_file.emit(selected_filename)
+                break
+            else:
                 sys.exit(0)
-            self.signal_selected_file.emit(selected_filename)
 
         self.start_pause_button.setText('请用鼠标选定跟踪对象')
         self.start_pause_button.setEnabled(False)
@@ -150,7 +152,7 @@ class MyImageLabel(QtWidgets.QLabel):
         用于改变绘制的矩形的位置和大小
         :param rect: tuple 矩形的x,y,w,h
         """
-        if len(rect) < 4 or (type(rect) != tuple or type(rect) != list):
+        if len(rect) < 4 or (type(rect) not in (tuple, list)):
             rect = (0, 0, 0, 0)
         self.paint_rect = tuple(rect)
 
@@ -172,14 +174,3 @@ class MyImageLabel(QtWidgets.QLabel):
             painter = QPainter(self)
             painter.setPen(Qt.blue)
             painter.drawRect(QRect(*self.paint_rect))
-
-
-if __name__ == "__main__":
-    app = QtWidgets.QApplication([])
-
-    test_settings = {'supported_formats': ('jpg')}
-
-    widget = MainWin(test_settings, InterfaceSignalConnection())
-    widget.show()
-
-    sys.exit(app.exec_())
