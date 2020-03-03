@@ -12,17 +12,16 @@ class MainWin(QtWidgets.QWidget):
     signal_for_switch_record_mouse_pos = Signal()
     signal_for_switch_paint = Signal()
 
-    def __init__(self, settings: dict, signal_connection):
+    def __init__(self, settings, signal_connection):
         """
-        :param settings: dict 一些设置项，未来可能换为设置类
+        :param settings: 设置类
         :param signal_connection: 用来连接的外部信号，未做信号存在及未来升级的设计优化
         """
         super().__init__()
         # 设置
         self.settings = settings
-        fixed_size = self.settings.get('fixed_size', (1000, 800))
-        self.setFixedSize(*fixed_size[:2])
-        self.settings['pause_sign'] = False
+        self.setFixedSize(*self.settings.init_fix_rect)
+        self.settings.if_pause = False
 
         # 窗口部件
         self.image_win = MyImageLabel(self.signal_for_switch_record_mouse_pos, self.signal_for_switch_paint,
@@ -53,7 +52,7 @@ class MainWin(QtWidgets.QWidget):
             dialog.setFileMode(QtWidgets.QFileDialog.ExistingFile)
             if dialog.exec_():
                 selected_filename: str = dialog.selectedFiles()[0]
-                if selected_filename.split('.')[-1] not in self.settings['supported_formats']:
+                if selected_filename.split('.')[-1] not in self.settings.supported_formats:
                     self.show_msg('不支持的文件格式')
                     continue
                 self.signal_selected_file.emit(selected_filename)
@@ -72,7 +71,7 @@ class MainWin(QtWidgets.QWidget):
         用户选择追踪对象后的处理
         """
         if self.show_msg('是否确认？') == QtWidgets.QMessageBox.Ok:
-            self.settings['tracking_object_rect'] = self.image_win.paint_rect
+            self.settings.tracking_object = self.settings.get_image_from_first_frame_by_rect(self.image_win.paint_rect)
             self.signal_for_switch_record_mouse_pos.emit()
             self.start_pause_button.setEnabled(True)
             self.start_pause_button.clicked.connect(self.pause_tracking)
@@ -83,7 +82,7 @@ class MainWin(QtWidgets.QWidget):
         self.start_pause_button.setText('开始')
         self.start_pause_button.clicked.disconnect(self.pause_tracking)
         self.start_pause_button.clicked.connect(self.start_tracking)
-        self.settings['pause_sign'] = True
+        self.settings.if_pause = True
 
     @Slot()
     def start_tracking(self):
@@ -93,7 +92,7 @@ class MainWin(QtWidgets.QWidget):
         self.start_pause_button.setText('暂停')
         self.start_pause_button.clicked.disconnect(self.start_tracking)
         self.start_pause_button.clicked.connect(self.pause_tracking)
-        self.settings['pause_sign'] = False
+        self.settings.if_pause = False
 
     @Slot(str)
     def show_msg(self, msg: str):

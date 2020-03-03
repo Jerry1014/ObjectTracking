@@ -24,8 +24,7 @@ class TestCaseForReadVideo(unittest.TestCase):
 class TestCaseForInterface(unittest.TestCase):
     def test_for_interface(self):
         from Main import Start
-        from Model import TestModel
-        Start(TestModel).run()
+        Start().run()
         assert True
 
 

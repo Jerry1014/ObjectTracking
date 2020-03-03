@@ -1,7 +1,7 @@
 """
 界面与模型控制之间的中间件
 """
-from queue import Queue, Empty
+from queue import Empty
 
 from PySide2.QtCore import QObject, Signal, QRunnable, Slot
 
@@ -14,27 +14,26 @@ class InterfaceSignalConnection(QObject):
 
 
 class InterfaceController(QRunnable):
-    def __init__(self, settings, frame_queue: Queue):
+    def __init__(self, settings):
         """
-        :param settings: 设置字典
-        :param frame_queue: 帧队列
+        :param settings: 设置类
         """
         super().__init__()
         self.signal_connection = InterfaceSignalConnection()
         self.signal_connection.selected_filename = self.after_selected_file
         self.settings = settings
-        self.frame_queue = frame_queue
-        self.first_frame_sign = True
+        self.frame_queue = self.settings.frame_queue
 
     def run(self):
-        while not self.settings.get('if_selected_file', None):
+        while not self.settings.filename:
             pass
 
         frame = self.frame_queue.get()
         self.emit_pic(frame[0])
-        self.settings['pause_sign'] = True
-        while not self.settings['end_sign']:
-            if not self.settings['pause_sign']:
+        self.settings.first_frame = frame[0]
+        self.settings.if_pause = True
+        while not self.settings.if_end:
+            if not self.settings.if_pause:
                 try:
                     frame = self.frame_queue.get(timeout=1)
                 except Empty:
@@ -44,8 +43,7 @@ class InterfaceController(QRunnable):
 
     @Slot()
     def after_selected_file(self, filename: str):
-        self.settings['selected_filename'] = filename
-        self.settings['if_selected_file'] = True
+        self.settings.filename = filename
 
     def emit_msg(self, msg: str):
         self.signal_connection.msg_signal.emit(msg)

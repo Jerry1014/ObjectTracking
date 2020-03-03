@@ -1,7 +1,6 @@
 """
 承接界面和模型的中间模块，负责总体调度
 """
-from queue import Queue
 
 from PySide2.QtCore import QRunnable
 from cv2.cv2 import cvtColor, COLOR_BGR2RGB
@@ -10,19 +9,19 @@ from ReadVideo import ReadVideoFromFile, EndOfVideo
 
 
 class ModelController(QRunnable):
-    def __init__(self, settings, frame_queue: Queue, model_class):
+    def __init__(self, settings):
         super().__init__()
-        self.video_reader = ReadVideoFromFile()
-        self.model_class = model_class
-        self.model = model_class(None)
         self.settings = settings
-        self.frame_queue = frame_queue
+        self.video_reader = ReadVideoFromFile()
+        self.model_class = self.settings.model_class
+        self.model = self.model_class(None)
+        self.frame_queue = self.settings.frame_queue
 
     def run(self):
-        while not self.settings.get('if_selected_file', None):
+        while not self.settings.filename:
             pass
 
-        self.video_reader.open_video(self.settings['selected_filename'])
+        self.video_reader.open_video(self.settings.filename)
         frame = self.video_reader.get_one_frame()
         image = cvtColor(frame, COLOR_BGR2RGB)
         self.frame_queue.put((image, None))
