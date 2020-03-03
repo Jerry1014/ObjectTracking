@@ -53,7 +53,7 @@ class MainWin(QtWidgets.QWidget):
             if dialog.exec_():
                 selected_filename: str = dialog.selectedFiles()[0]
                 if selected_filename.split('.')[-1] not in self.settings.supported_formats:
-                    self.show_msg('不支持的文件格式')
+                    self._show_msg('不支持的文件格式')
                     continue
                 self.signal_selected_file.emit(selected_filename)
                 break
@@ -70,8 +70,13 @@ class MainWin(QtWidgets.QWidget):
         """
         用户选择追踪对象后的处理
         """
-        if self.show_msg('是否确认？') == QtWidgets.QMessageBox.Ok:
-            self.settings.tracking_object = self.settings.get_image_from_first_frame_by_rect(self.image_win.paint_rect)
+        tracking_object_image = self.settings.get_image_from_first_frame_by_rect(self.image_win.paint_rect)
+        h, w, ch = tracking_object_image.shape
+        tracking_object_image_pixmap = QPixmap.fromImage(
+            QImage(tracking_object_image, w, h, ch * w, QImage.Format_RGB888))
+        if self._show_msg('是否确认？', if_cancel=True, if_image=True,
+                          image=tracking_object_image_pixmap) == QtWidgets.QMessageBox.Ok:
+            self.settings.tracking_object = tracking_object_image
             self.signal_for_switch_record_mouse_pos.emit()
             self.start_pause_button.setEnabled(True)
             self.start_pause_button.clicked.connect(self.pause_tracking)
@@ -100,10 +105,17 @@ class MainWin(QtWidgets.QWidget):
         展示提示框，未来将优化按键及消息类型
         :param msg: str 提示的信息
         """
+        self._show_msg(msg)
+
+    def _show_msg(self, msg, if_cancel=None, if_image=None, image=None):
         msg_box = QtWidgets.QMessageBox()
         msg_box.setText(msg)
         msg_box.addButton(QtWidgets.QMessageBox.Ok)
-        msg_box.addButton(QtWidgets.QMessageBox.Cancel)
+        if if_cancel:
+            msg_box.addButton(QtWidgets.QMessageBox.Cancel)
+        if if_image:
+            msg_box.setIconPixmap(image)
+            msg_box.setFixedSize(500,500)
         return msg_box.exec_()
 
     @Slot()
