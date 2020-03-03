@@ -30,6 +30,9 @@ class InterfaceController(QRunnable):
         while not self.settings.get('if_selected_file', None):
             pass
 
+        frame = self.frame_queue.get()
+        self.emit_pic(frame[0])
+        self.settings['pause_sign'] = True
         while not self.settings['end_sign']:
             if not self.settings['pause_sign']:
                 try:
@@ -37,12 +40,7 @@ class InterfaceController(QRunnable):
                 except Empty:
                     continue
                 self.emit_pic(frame[0])
-                if self.first_frame_sign:
-                    self.settings['first_frame'] = frame[0]
-                    self.first_frame_sign = False
-                    self.settings['pause_sign'] = True
-                else:
-                    self.emit_rect(frame[1])
+                self.emit_rect(frame[1])
 
     @Slot()
     def after_selected_file(self, filename: str):

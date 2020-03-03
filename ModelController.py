@@ -23,6 +23,9 @@ class ModelController(QRunnable):
             pass
 
         self.video_reader.open_video(self.settings['selected_filename'])
+        frame = self.video_reader.get_one_frame()
+        image = cvtColor(frame, COLOR_BGR2RGB)
+        self.frame_queue.put((image, None))
         # todo 未做将需要追踪的模板传入模型类
         while self.video_reader.is_open():
             try:
