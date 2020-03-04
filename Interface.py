@@ -115,7 +115,6 @@ class MainWin(QtWidgets.QWidget):
             msg_box.addButton(QtWidgets.QMessageBox.Cancel)
         if if_image:
             msg_box.setIconPixmap(image)
-            msg_box.setFixedSize(500,500)
         return msg_box.exec_()
 
     @Slot()

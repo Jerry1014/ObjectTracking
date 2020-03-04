@@ -26,7 +26,9 @@ class Settings:
 
     def get_image_from_first_frame_by_rect(self, rect):
         rect = [int(i) for i in rect]
-        return self.first_frame[rect[0]:rect[0] + rect[3], rect[1]:rect[1] + rect[2]].copy(order='C')
+        # fixme 图片y轴存在偏移，暂通过临时加解决
+        rect[1] = rect[1] + 38
+        return self.first_frame[rect[1]:rect[1] + rect[3], rect[0]:rect[0] + rect[2]].copy(order='C')
 
 
 settings = Settings()
