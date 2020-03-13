@@ -5,7 +5,7 @@ from queue import Queue
 
 from numpy.core.multiarray import ndarray
 
-from Model import TestModel
+from Model.Test.TestModel import TestModel
 
 
 class Settings:
