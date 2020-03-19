@@ -2,29 +2,30 @@
 """
 读取视频模块
 """
+from os import walk
+from os.path import exists, sep
+from queue import Queue
+
+from cv2.cv2 import imread
 
 
 class OpenVideoError(Exception):
     pass
 
 
-class EndOfVideo(Exception):
+class EndOfVideoError(Exception):
     pass
 
 
-class ReadVideo:
+class ReadVideoBase:
     """
     指定视频资源，通过调用get_one_frame方法逐一获取每一帧
     """
 
     # CV2中的VideoCapture的初始化参数中的filename，既可以是视频文件名，也可以是图片序列，也可以是url
     # 故这个基类是否有存在的必要？我还没有想好，暂时这么写着
-    def init(self, video_filename):
-        """
-        初始化视频读取
-        :param video_filename: 视频文件名称
-        """
-        raise NotImplementedError()
+    def __init__(self, file_or_dir):
+        self.file_or_dir = file_or_dir
 
     def get_one_frame(self):
         """
@@ -33,14 +34,15 @@ class ReadVideo:
         raise NotImplementedError()
 
 
-class ReadVideoFromFile(ReadVideo):
+class ReadVideoFromFile(ReadVideoBase):
     """
     从文件中逐帧读取
     """
 
-    def __init__(self, video_filename=None):
+    def __init__(self, file_or_dir=None):
+        super().__init__(file_or_dir)
         self.video_capture = None
-        self.init(video_filename)
+        self.init(file_or_dir)
 
     def init(self, video_filename=None):
         """
@@ -78,7 +80,7 @@ class ReadVideoFromFile(ReadVideo):
         else:
             # 此处释放逻辑对于视频可行，对于摄像头则有错
             self.release_init()
-            raise EndOfVideo()
+            raise EndOfVideoError()
 
     def release_init(self):
         """
@@ -86,3 +88,25 @@ class ReadVideoFromFile(ReadVideo):
         """
         self.video_capture.release()
         self.init()
+
+
+class ReadPicFromDir(ReadVideoBase):
+    support_format = ('jpg',)
+
+    def __init__(self, file_or_dir):
+        super().__init__(file_or_dir)
+
+        if not exists(self.file_or_dir):
+            raise OpenVideoError()
+
+        self.pic_queue = Queue()
+        _, _, file_list = next(walk(self.file_or_dir))
+        for filename in file_list:
+            if filename.split('.')[-1] in self.support_format:
+                self.pic_queue.put(imread(self.file_or_dir + sep + filename))
+
+    def get_one_frame(self):
+        if self.pic_queue.qsize() > 0:
+            return self.pic_queue.get()
+        else:
+            raise EndOfVideoError()

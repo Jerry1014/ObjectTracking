@@ -5,7 +5,7 @@
 from PySide2.QtCore import QRunnable
 from cv2.cv2 import cvtColor, COLOR_BGR2RGB
 
-from ReadVideo import ReadVideoFromFile, EndOfVideo
+from ReadVideo import ReadVideoFromFile, EndOfVideoError
 
 
 class ModelController(QRunnable):
@@ -32,6 +32,6 @@ class ModelController(QRunnable):
                 image = cvtColor(frame, COLOR_BGR2RGB)
                 rect = self.model.get_tracking_result(image)
                 self.frame_queue.put((image, rect))
-            except EndOfVideo:
+            except EndOfVideoError:
                 break
         self.video_reader.release_init()
