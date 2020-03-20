@@ -1,7 +1,10 @@
 """
 承接界面和模型的中间模块，负责总体调度
 """
+import sys
 from configparser import ConfigParser
+from os import getcwd
+from os.path import sep
 
 from PySide2.QtCore import QRunnable
 from cv2.cv2 import cvtColor, COLOR_BGR2RGB
@@ -31,20 +34,19 @@ class ModelController(QRunnable):
         while self.settings.model_color_dict is None:
             pass
 
-        # fixme 反射
-        # fixme while的顺序等
         cf = ConfigParser()
         cf.read('./Model/config.ini')
         for i in self.settings.model_color_dict.keys():
             path = cf[i]['path']
-            import sys
-            import os
-            print(os.getcwd() + os.sep + 'Model' + os.sep + path)
-            sys.path.append(os.getcwd() + os.sep + 'Model' + os.sep + path)
-            m = __import__(i)
-            model = getattr(m, i)()
-            model.set_tracking_object(self.settings.tracking_object)
-            self.model_list.append(model)
+            if path not in sys.path:
+                sys.path.append(getcwd() + sep + 'Model' + sep + path)
+            try:
+                m = __import__(i)
+                model = getattr(m, i)()
+                model.set_tracking_object(self.settings.tracking_object)
+                self.model_list.append(model)
+            except (ModuleNotFoundError, AttributeError):
+                print(f'反射失败 反射模块{i} 模块路径{path} 反射类{i}')
 
         # 等待用户选择开始
         while self.settings.if_pause:
