@@ -1,9 +1,10 @@
 # -*- coding:utf-8 -*-
 import sys
+from queue import Queue
 
 from PySide2 import QtWidgets
 from PySide2.QtCore import Slot, Signal, Qt, QRect
-from PySide2.QtGui import QPixmap, QImage, QMouseEvent, QPaintEvent, QPainter
+from PySide2.QtGui import QPixmap, QImage, QMouseEvent, QPaintEvent, QPainter, QColor
 
 
 class MainWin(QtWidgets.QWidget):
@@ -11,6 +12,7 @@ class MainWin(QtWidgets.QWidget):
     signal_after_setting_tracking_object = Signal()
     signal_for_switch_record_mouse_pos = Signal()
     signal_for_switch_paint = Signal()
+    signal_for_rect = Signal(list)
 
     def __init__(self, settings, signal_connection):
         """
@@ -25,7 +27,7 @@ class MainWin(QtWidgets.QWidget):
 
         # 窗口部件
         self.image_win = MyImageLabel(self.signal_for_switch_record_mouse_pos, self.signal_for_switch_paint,
-                                      signal_connection.signal_for_rect, self.signal_after_setting_tracking_object)
+                                      self.signal_for_rect, self.signal_after_setting_tracking_object)
         self.start_pause_button = QtWidgets.QPushButton('载入视频')
 
         # 布局
@@ -74,7 +76,7 @@ class MainWin(QtWidgets.QWidget):
         h, w, ch = tracking_object_image.shape
         tracking_object_image_pixmap = QPixmap.fromImage(
             QImage(tracking_object_image, w, h, ch * w, QImage.Format_RGB888))
-        if self._show_msg('是否确认？', if_cancel=True, if_image=True,
+        if self._show_msg('确认跟踪对象？', if_cancel=True, if_image=True,
                           image=tracking_object_image_pixmap) == QtWidgets.QMessageBox.Ok:
             self.settings.tracking_object = tracking_object_image
             self.signal_for_switch_record_mouse_pos.emit()
@@ -118,14 +120,16 @@ class MainWin(QtWidgets.QWidget):
         return msg_box.exec_()
 
     @Slot()
-    def set_pic(self, image):
+    def set_pic(self, frame):
         """
         显示图片
         :param image: 一定要是ndarray，RGB888格式
         """
+        image, rect_list = frame
         h, w, ch = image.shape
         self.setFixedSize(w, h)
         self.image_win.setPixmap(QPixmap.fromImage(QImage(image, w, h, ch * w, QImage.Format_RGB888)))
+        self.signal_for_rect.emit(rect_list)
 
 
 class MyImageLabel(QtWidgets.QLabel):
@@ -144,8 +148,9 @@ class MyImageLabel(QtWidgets.QLabel):
         self.if_paint = False
         signal_for_switch_record_mouse_pos.connect(self.switch_mouse_pos_record)
         signal_for_switch_paint.connect(self.switch_paint)
-        signal_for_rect.connect(self.change_paint_rect)
+        signal_for_rect.connect(self.add_needed_paint_rect)
         self.signal_after_setting_tracking_object = signal_after_setting_tracking_object
+        self.needed_paint_rect_list = list()
 
     @Slot()
     def switch_mouse_pos_record(self):
@@ -156,14 +161,12 @@ class MyImageLabel(QtWidgets.QLabel):
         self.if_paint = self.if_paint ^ True
 
     @Slot()
-    def change_paint_rect(self, rect):
+    def add_needed_paint_rect(self, rect):
         """
         用于改变绘制的矩形的位置和大小
         :param rect: tuple 矩形的x,y,w,h
         """
-        if len(rect) < 4 or (type(rect) not in (tuple, list)):
-            rect = (0, 0, 0, 0)
-        self.paint_rect = tuple(rect)
+        self.needed_paint_rect_list = rect
 
     @Slot()
     def mousePressEvent(self, event: QMouseEvent):
@@ -171,15 +174,18 @@ class MyImageLabel(QtWidgets.QLabel):
             self.paint_rect = (*event.localPos().toTuple(), 0, 0)
 
     def mouseReleaseEvent(self, event: QMouseEvent):
+        # fixme 鼠标只能由左上画到右下，且没有判断
         if self.if_record_mouse_pos:
             end_pos = event.localPos().toTuple()
             self.paint_rect = (*self.paint_rect[:2], end_pos[0] - self.paint_rect[0], end_pos[1] - self.paint_rect[1])
+            self.needed_paint_rect_list.append((self.paint_rect, 'blue'))
             self.repaint()
             self.signal_after_setting_tracking_object.emit()
 
     def paintEvent(self, event: QPaintEvent):
         super().paintEvent(event)
-        if self.if_paint and self.paint_rect:
-            painter = QPainter(self)
-            painter.setPen(Qt.blue)
-            painter.drawRect(QRect(*self.paint_rect))
+        if self.if_paint and self.needed_paint_rect_list:
+            for rect, color in self.needed_paint_rect_list:
+                painter = QPainter(self)
+                painter.setPen(color)
+                painter.drawRect(QRect(*rect))

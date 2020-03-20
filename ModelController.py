@@ -13,8 +13,7 @@ class ModelController(QRunnable):
         super().__init__()
         self.settings = settings
         self.video_reader = ReadVideoFromFile()
-        self.model_class = self.settings.model_class
-        self.model = self.model_class(None)
+        self.model_list = [i() for i in self.settings.model_class]
         self.frame_queue = self.settings.frame_queue
 
     def run(self):
@@ -24,14 +23,16 @@ class ModelController(QRunnable):
         self.video_reader.open_video(self.settings.filename)
         frame = self.video_reader.get_one_frame()
         image = cvtColor(frame, COLOR_BGR2RGB)
-        self.frame_queue.put((image, None))
+        self.frame_queue.put((image, list()))
         # todo 未做将需要追踪的模板传入模型类
         while self.video_reader.is_open():
             try:
                 frame = self.video_reader.get_one_frame()
                 image = cvtColor(frame, COLOR_BGR2RGB)
-                rect = self.model.get_tracking_result(image)
-                self.frame_queue.put((image, rect))
+                rect_list = list()
+                for i in self.model_list:
+                    rect_list.append((i.get_tracking_result(image), self.settings.get_model_color(i)))
+                self.frame_queue.put((image, rect_list))
             except EndOfVideoError:
                 break
         self.video_reader.release_init()

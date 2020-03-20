@@ -10,7 +10,6 @@ class InterfaceSignalConnection(QObject):
     msg_signal = Signal(str)
     selected_filename = Slot(str)
     pic_signal = Signal(list)
-    signal_for_rect = Signal(list)
 
 
 class InterfaceController(QRunnable):
@@ -29,7 +28,7 @@ class InterfaceController(QRunnable):
             pass
 
         frame = self.frame_queue.get()
-        self.emit_pic(frame[0])
+        self.emit_pic(frame)
         self.settings.first_frame = frame[0]
         self.settings.if_pause = True
         while not self.settings.if_end:
@@ -38,8 +37,7 @@ class InterfaceController(QRunnable):
                     frame = self.frame_queue.get(timeout=1)
                 except Empty:
                     continue
-                self.emit_pic(frame[0])
-                self.emit_rect(frame[1])
+                self.emit_pic(frame)
 
     @Slot()
     def after_selected_file(self, filename: str):
@@ -50,6 +48,3 @@ class InterfaceController(QRunnable):
 
     def emit_pic(self, pic):
         self.signal_connection.pic_signal.emit(pic)
-
-    def emit_rect(self, rect):
-        self.signal_connection.signal_for_rect.emit(tuple(rect))
