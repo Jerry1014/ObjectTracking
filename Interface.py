@@ -72,7 +72,7 @@ class MainWin(QtWidgets.QWidget):
         """
         用户选择追踪对象后的处理
         """
-        tracking_object_image = self.settings.get_image_from_first_frame_by_rect(self.image_win.paint_rect)
+        tracking_object_image = self.settings.get_image_from_first_frame_by_rect(self.image_win.mouse_press_rect)
         h, w, ch = tracking_object_image.shape
         tracking_object_image_pixmap = QPixmap.fromImage(
             QImage(tracking_object_image, w, h, ch * w, QImage.Format_RGB888))
@@ -143,7 +143,7 @@ class MyImageLabel(QtWidgets.QLabel):
         :param signal_after_setting_tracking_object: 当鼠标松开后且处在记录鼠标按下释放时，通过其发出信号
         """
         super().__init__()
-        self.paint_rect = None
+        self.mouse_press_rect = None
         self.if_record_mouse_pos = False
         self.if_paint = False
         signal_for_switch_record_mouse_pos.connect(self.switch_mouse_pos_record)
@@ -171,14 +171,15 @@ class MyImageLabel(QtWidgets.QLabel):
     @Slot()
     def mousePressEvent(self, event: QMouseEvent):
         if self.if_record_mouse_pos:
-            self.paint_rect = (*event.localPos().toTuple(), 0, 0)
+            self.mouse_press_rect = event.localPos().toTuple()
 
     def mouseReleaseEvent(self, event: QMouseEvent):
         # fixme 鼠标只能由左上画到右下，且没有判断
         if self.if_record_mouse_pos:
             end_pos = event.localPos().toTuple()
-            self.paint_rect = (*self.paint_rect[:2], end_pos[0] - self.paint_rect[0], end_pos[1] - self.paint_rect[1])
-            self.needed_paint_rect_list.append((self.paint_rect, 'blue'))
+            self.mouse_press_rect = (
+            *self.mouse_press_rect[:2], end_pos[0] - self.mouse_press_rect[0], end_pos[1] - self.mouse_press_rect[1])
+            self.needed_paint_rect_list.append((self.mouse_press_rect, 'blue'))
             self.repaint()
             self.signal_after_setting_tracking_object.emit()
 
