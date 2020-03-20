@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 import sys
+from configparser import ConfigParser
 from queue import Queue
 
 from PySide2 import QtWidgets
@@ -44,6 +45,9 @@ class MainWin(QtWidgets.QWidget):
             self.signal_selected_file.connect(signal_connection.selected_filename)
         self.set_filename()
 
+        # just for test or tmp
+        self.new_win = None
+
     def set_filename(self):
         """
         用户选择视频文件，并对选择的文件做验证
@@ -81,8 +85,19 @@ class MainWin(QtWidgets.QWidget):
             self.settings.tracking_object = tracking_object_image
             self.signal_for_switch_record_mouse_pos.emit()
             self.start_pause_button.setEnabled(True)
-            self.start_pause_button.clicked.connect(self.pause_tracking)
-            self.start_pause_button.click()
+
+            cf = ConfigParser()
+            cf.read('./Model/config.ini')
+            model_choose_win = MyWidget(cf.sections())
+            model_choose_win.show()
+            model_choose_win.activateWindow()
+            self.new_win = model_choose_win
+
+            print('111')
+            # todo 选择完模型之后的处理
+
+            # self.start_pause_button.clicked.connect(self.pause_tracking)
+            # self.start_pause_button.click()
 
     @Slot()
     def pause_tracking(self):
@@ -178,7 +193,8 @@ class MyImageLabel(QtWidgets.QLabel):
         if self.if_record_mouse_pos:
             end_pos = event.localPos().toTuple()
             self.mouse_press_rect = (
-            *self.mouse_press_rect[:2], end_pos[0] - self.mouse_press_rect[0], end_pos[1] - self.mouse_press_rect[1])
+                *self.mouse_press_rect[:2], end_pos[0] - self.mouse_press_rect[0],
+                end_pos[1] - self.mouse_press_rect[1])
             self.needed_paint_rect_list.append((self.mouse_press_rect, 'blue'))
             self.repaint()
             self.signal_after_setting_tracking_object.emit()
@@ -190,3 +206,29 @@ class MyImageLabel(QtWidgets.QLabel):
             for rect, color in self.needed_paint_rect_list:
                 painter.setPen(color)
                 painter.drawRect(QRect(*rect))
+
+
+class AModelElection(QtWidgets.QWidget):
+    color = ('red', 'orange', 'yellow', 'green', 'blue')
+
+    def __init__(self, model_name, if_selected=False):
+        super().__init__()
+        self.check_box = QtWidgets.QCheckBox(model_name)
+        self.check_box.setChecked(if_selected)
+        self.color_select = QtWidgets.QComboBox()
+        self.color_select.addItems(self.color)
+
+        self.layout = QtWidgets.QHBoxLayout()
+        self.layout.addWidget(self.check_box)
+        self.layout.addWidget(self.color_select)
+        self.setLayout(self.layout)
+
+
+class MyWidget(QtWidgets.QWidget):
+    def __init__(self, model_name_list):
+        super().__init__()
+        self.layout = QtWidgets.QVBoxLayout()
+        self.layout.addWidget(AModelElection(model_name_list[0], True))
+        for name in model_name_list[1:]:
+            self.layout.addWidget(AModelElection(name))
+        self.setLayout(self.layout)
