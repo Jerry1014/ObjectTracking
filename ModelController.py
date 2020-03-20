@@ -1,6 +1,7 @@
 """
 承接界面和模型的中间模块，负责总体调度
 """
+from configparser import ConfigParser
 
 from PySide2.QtCore import QRunnable
 from cv2.cv2 import cvtColor, COLOR_BGR2RGB
@@ -13,27 +14,50 @@ class ModelController(QRunnable):
         super().__init__()
         self.settings = settings
         self.video_reader = ReadVideoFromFile()
-        self.model_list = [i() for i in self.settings.model_class]
+        self.model_list = list()
         self.frame_queue = self.settings.frame_queue
 
     def run(self):
         while not self.settings.filename:
             pass
 
+        # 读取第一帧
         self.video_reader.open_video(self.settings.filename)
         frame = self.video_reader.get_one_frame()
         image = cvtColor(frame, COLOR_BGR2RGB)
         self.frame_queue.put((image, list()))
-        # todo 未做将需要追踪的模板传入模型类
+
+        # 等待用户选择模型
+        while self.settings.model_color_dict is None:
+            pass
+
+        # fixme 反射
+        # fixme while的顺序等
+        cf = ConfigParser()
+        cf.read('./Model/config.ini')
+        for i in self.settings.model_color_dict.keys():
+            path = cf[i]['path']
+            import sys
+            import os
+            print(os.getcwd() + os.sep + 'Model' + os.sep + path)
+            sys.path.append(os.getcwd() + os.sep + 'Model' + os.sep + path)
+            m = __import__(i)
+            model = getattr(m, i)()
+            model.set_tracking_object(self.settings.tracking_object)
+            self.model_list.append(model)
+
+        # 等待用户选择开始
         while self.settings.if_pause:
             pass
+
         while self.video_reader.is_open():
             try:
                 frame = self.video_reader.get_one_frame()
                 image = cvtColor(frame, COLOR_BGR2RGB)
                 rect_list = list()
                 for i in self.model_list:
-                    rect_list.append((i.get_tracking_result(image), self.settings.get_model_color(i)))
+                    rect_list.append(
+                        (i.get_tracking_result(image), self.settings.get_model_color(i.__class__.__name__)))
                 self.frame_queue.put((image, rect_list))
             except EndOfVideoError:
                 self.settings.if_end = True

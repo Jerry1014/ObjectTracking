@@ -96,7 +96,7 @@ class MainWin(QtWidgets.QWidget):
 
     @Slot()
     def after_choose_model(self):
-        print(self.new_win.get_all_data())
+        self.settings.model_color_dict = self.new_win.get_all_data()
         self.start_pause_button.clicked.connect(self.pause_tracking)
         self.start_pause_button.click()
 
@@ -226,7 +226,7 @@ class AModelElection(QtWidgets.QWidget):
         self.setLayout(self.layout)
 
     def get_data(self):
-        return (self.check_box.text(), self.color_select.currentText()) if self.check_box.isChecked() else None
+        return (self.check_box.text(), self.color_select.currentText()) if self.check_box.isChecked() else (None, None)
 
 
 class MyWidget(QtWidgets.QWidget):
@@ -246,10 +246,11 @@ class MyWidget(QtWidgets.QWidget):
         self.setLayout(self.layout)
 
     def get_all_data(self):
-        data_list = list()
-        for i in (i.get_data() for i in self.model_election_list):
-            if i:
-                data_list.append(i)
+        data_list = dict()
+        for i in self.model_election_list:
+            model, color = i.get_data()
+            if model:
+                data_list[model] = color
         return data_list
 
     def closeEvent(self, event: QCloseEvent):
