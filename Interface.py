@@ -185,7 +185,7 @@ class MyImageLabel(QtWidgets.QLabel):
     def paintEvent(self, event: QPaintEvent):
         super().paintEvent(event)
         if self.if_paint and self.needed_paint_rect_list:
+            painter = QPainter(self)
             for rect, color in self.needed_paint_rect_list:
-                painter = QPainter(self)
                 painter.setPen(color)
                 painter.drawRect(QRect(*rect))

@@ -6,10 +6,11 @@ from queue import Queue
 from numpy.core.multiarray import ndarray
 
 from Model.Test.TestModel import TestModel
+from Model.Test.TestModel2 import TestModel2
 
 
 class Settings:
-    def __init__(self, model_class_list=(TestModel,)):
+    def __init__(self, model_class_list=(TestModel,TestModel2)):
         # 设置项
         self.init_fix_rect = (1000, 800)
         self.supported_formats = ('mp4', 'mkv')
@@ -18,12 +19,12 @@ class Settings:
 
         # 在组件中传递的标记
         self.if_end = None
-        self.if_pause = None
+        self.if_pause = True
         self.filename = None
         self.frame_queue = Queue(self.frame_queue_max_num)
         self.first_frame: ndarray = None
         self.tracking_object = None
-        self.model_color = {}
+        self.model_color = {TestModel:'red',TestModel2:'yellow'}
 
     def get_image_from_first_frame_by_rect(self, rect):
         rect = [int(i) for i in rect]
