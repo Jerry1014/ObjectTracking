@@ -25,6 +25,8 @@ class ModelController(QRunnable):
         image = cvtColor(frame, COLOR_BGR2RGB)
         self.frame_queue.put((image, list()))
         # todo 未做将需要追踪的模板传入模型类
+        while self.settings.if_pause:
+            pass
         while self.video_reader.is_open():
             try:
                 frame = self.video_reader.get_one_frame()
@@ -34,5 +36,7 @@ class ModelController(QRunnable):
                     rect_list.append((i.get_tracking_result(image), self.settings.get_model_color(i)))
                 self.frame_queue.put((image, rect_list))
             except EndOfVideoError:
+                self.settings.if_end = True
                 break
+
         self.video_reader.release_init()

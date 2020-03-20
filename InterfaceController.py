@@ -31,13 +31,15 @@ class InterfaceController(QRunnable):
         self.emit_pic(frame)
         self.settings.first_frame = frame[0]
         self.settings.if_pause = True
-        while not self.settings.if_end:
+        while not self.settings.if_end and self.frame_queue.qsize() == 0:
             if not self.settings.if_pause:
                 try:
                     frame = self.frame_queue.get(timeout=1)
                 except Empty:
                     continue
                 self.emit_pic(frame)
+
+        self.emit_msg('视频结束')
 
     @Slot()
     def after_selected_file(self, filename: str):
