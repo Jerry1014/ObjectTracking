@@ -1,11 +1,10 @@
 # -*- coding:utf-8 -*-
 import sys
 from configparser import ConfigParser
-from queue import Queue
 
 from PySide2 import QtWidgets
-from PySide2.QtCore import Slot, Signal, Qt, QRect
-from PySide2.QtGui import QPixmap, QImage, QMouseEvent, QPaintEvent, QPainter, QColor
+from PySide2.QtCore import Slot, Signal, QRect
+from PySide2.QtGui import QPixmap, QImage, QMouseEvent, QPaintEvent, QPainter, QCloseEvent
 
 
 class MainWin(QtWidgets.QWidget):
@@ -14,6 +13,7 @@ class MainWin(QtWidgets.QWidget):
     signal_for_switch_record_mouse_pos = Signal()
     signal_for_switch_paint = Signal()
     signal_for_rect = Signal(list)
+    signal_for_close_new_win = Signal()
 
     def __init__(self, settings, signal_connection):
         """
@@ -88,16 +88,17 @@ class MainWin(QtWidgets.QWidget):
 
             cf = ConfigParser()
             cf.read('./Model/config.ini')
-            model_choose_win = MyWidget(cf.sections())
+            model_choose_win = MyWidget(cf.sections(), self.signal_for_close_new_win)
+            self.signal_for_close_new_win.connect(self.after_choose_model)
             model_choose_win.show()
             model_choose_win.activateWindow()
             self.new_win = model_choose_win
 
-            print('111')
-            # todo 选择完模型之后的处理
-
-            # self.start_pause_button.clicked.connect(self.pause_tracking)
-            # self.start_pause_button.click()
+    @Slot()
+    def after_choose_model(self):
+        print(self.new_win.get_all_data())
+        self.start_pause_button.clicked.connect(self.pause_tracking)
+        self.start_pause_button.click()
 
     @Slot()
     def pause_tracking(self):
@@ -214,6 +215,7 @@ class AModelElection(QtWidgets.QWidget):
     def __init__(self, model_name, if_selected=False):
         super().__init__()
         self.check_box = QtWidgets.QCheckBox(model_name)
+        self.check_box.isChecked()
         self.check_box.setChecked(if_selected)
         self.color_select = QtWidgets.QComboBox()
         self.color_select.addItems(self.color)
@@ -223,12 +225,32 @@ class AModelElection(QtWidgets.QWidget):
         self.layout.addWidget(self.color_select)
         self.setLayout(self.layout)
 
+    def get_data(self):
+        return (self.check_box.text(), self.color_select.currentText()) if self.check_box.isChecked() else None
+
 
 class MyWidget(QtWidgets.QWidget):
-    def __init__(self, model_name_list):
+    def __init__(self, model_name_list, close_signal):
         super().__init__()
+        self.close_signal = close_signal
         self.layout = QtWidgets.QVBoxLayout()
-        self.layout.addWidget(AModelElection(model_name_list[0], True))
+        self.model_election_list = list()
+
+        first_model_election = AModelElection(model_name_list[0], True)
+        self.layout.addWidget(first_model_election)
+        self.model_election_list.append(first_model_election)
         for name in model_name_list[1:]:
-            self.layout.addWidget(AModelElection(name))
+            model_election = AModelElection(name)
+            self.model_election_list.append(model_election)
+            self.layout.addWidget(model_election)
         self.setLayout(self.layout)
+
+    def get_all_data(self):
+        data_list = list()
+        for i in (i.get_data() for i in self.model_election_list):
+            if i:
+                data_list.append(i)
+        return data_list
+
+    def closeEvent(self, event: QCloseEvent):
+        self.close_signal.emit()
