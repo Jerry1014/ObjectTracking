@@ -4,7 +4,10 @@
 
 
 class BaseModel:
-    def __init__(self, tracking_object):
+    def __init__(self):
+        self.tracking_object = None
+
+    def set_tracking_object(self, tracking_object):
         self.tracking_object = tracking_object
 
     def get_tracking_result(self, cur_frame):

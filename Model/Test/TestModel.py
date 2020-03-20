@@ -2,8 +2,8 @@ from Model.Model import BaseModel
 
 
 class TestModel(BaseModel):
-    def __init__(self, tracking_object):
-        super().__init__(tracking_object)
+    def __init__(self):
+        super().__init__()
         self.x = 0
         self.y = 0
 
