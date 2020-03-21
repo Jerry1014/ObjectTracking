@@ -68,7 +68,6 @@ class ModelController(QRunnable):
                 while self.frame_queue.qsize() > 10:
                     sleep(0.1)
             except EndOfVideoError:
-                self.settings.if_end = True
                 break
-
+        self.settings.if_end = True
         self.video_reader.release_init()

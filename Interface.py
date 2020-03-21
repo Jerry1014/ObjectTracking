@@ -81,11 +81,11 @@ class MainWin(QtWidgets.QWidget):
         h, w, ch = tracking_object_image.shape
         tracking_object_image_pixmap = QPixmap.fromImage(
             QImage(tracking_object_image, w, h, ch * w, QImage.Format_RGB888))
-        if self._show_msg('确认跟踪对象？', if_cancel=True, if_image=True,
+        if self._show_msg('确认跟踪对象', if_cancel=True, if_image=True,
                           image=tracking_object_image_pixmap) == QtWidgets.QMessageBox.Ok:
             self.settings.tracking_object = tracking_object_image
+            self.start_pause_button.setText('选择模型')
             self.signal_for_switch_record_mouse_pos.emit()
-            self.start_pause_button.setEnabled(True)
 
             cf = ConfigParser()
             cf.read('./Model/config.ini')
@@ -98,6 +98,7 @@ class MainWin(QtWidgets.QWidget):
     @Slot()
     def after_choose_model(self):
         self.settings.model_color_dict = self.new_win.get_all_data()
+        self.start_pause_button.setEnabled(True)
         self.start_pause_button.clicked.connect(self.pause_tracking)
         self.start_pause_button.click()
 
