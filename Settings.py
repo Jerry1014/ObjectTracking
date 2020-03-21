@@ -10,7 +10,8 @@ class Settings:
     def __init__(self):
         # 设置项
         self.init_fix_rect = (1000, 800)
-        self.supported_formats = ('mp4', 'mkv')
+        # fixme 后缀名大小写
+        self.supported_formats = ('mp4', 'mkv','MP4')
         self.frame_queue_max_num = 24
         self.model_color_dict = None
 

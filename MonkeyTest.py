@@ -8,7 +8,7 @@ class TestCaseForReadVideo(unittest.TestCase):
     def test_for_read_video(self):
         from cv2.cv2 import imshow, waitKey
         cap = TestCaseForReadVideo.ReadVideoFromFile()
-        cap.open_video('./resources/video/因为我穷.mp4')
+        cap.init('./resources/video/因为我穷.mp4')
         while cap.is_open():
             try:
                 frame = cap.get_one_frame()
@@ -16,14 +16,17 @@ class TestCaseForReadVideo(unittest.TestCase):
             except TestCaseForReadVideo.EndOfVideoError:
                 assert True
                 break
-            imshow('image', frame)
+            from cv2.cv2 import cvtColor
+            from cv2.cv2 import COLOR_RGB2BGR
+            imshow('image', cvtColor(frame, COLOR_RGB2BGR))
             waitKey(0)
         cap.release_init()
 
     def test_for_read_pic_dir(self):
         from ReadVideo import ReadPicFromDir
         test_dir = './dataset/Walking2/img'
-        test = ReadPicFromDir(test_dir)
+        test = ReadPicFromDir()
+        test.init(test_dir)
         from ReadVideo import EndOfVideoError
         while True:
             try:
