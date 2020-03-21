@@ -52,15 +52,16 @@ class MainWin(QtWidgets.QWidget):
         """
         用户选择视频文件，并对选择的文件做验证
         """
-        # 重要！！！ 对文件的类型等检查在此完成
         while True:
             dialog = QtWidgets.QFileDialog()
-            dialog.setFileMode(QtWidgets.QFileDialog.ExistingFile)
+            # fixme FIleDialog 要么选择文件，要么目录，暂未有解决办法
+            dialog.setFileMode(QtWidgets.QFileDialog.Directory)
             if dialog.exec_():
                 selected_filename: str = dialog.selectedFiles()[0]
-                if selected_filename.split('.')[-1] not in self.settings.supported_formats:
-                    self._show_msg('不支持的文件格式')
-                    continue
+                # 暂时去除文件格式等的检验和限制
+                # if selected_filename.split('.')[-1] not in self.settings.supported_formats:
+                #     self._show_msg('不支持的文件格式')
+                #     continue
                 self.signal_selected_file.emit(selected_filename)
                 break
             else:
@@ -146,6 +147,8 @@ class MainWin(QtWidgets.QWidget):
         self.setFixedSize(w, h)
         self.image_win.setPixmap(QPixmap.fromImage(QImage(image, w, h, ch * w, QImage.Format_RGB888)))
         self.signal_for_rect.emit(rect_list)
+
+        # todo 当前播放进度
 
 
 class MyImageLabel(QtWidgets.QLabel):
