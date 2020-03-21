@@ -25,10 +25,9 @@ class ModelController(QRunnable):
             pass
 
         # 读取第一帧
-        self.video_reader.open_video(self.settings.filename)
+        self.video_reader.init(self.settings.filename)
         frame = self.video_reader.get_one_frame()
-        image = cvtColor(frame, COLOR_BGR2RGB)
-        self.frame_queue.put((image, list()))
+        self.frame_queue.put((frame, list()))
 
         # 等待用户选择模型
         while self.settings.model_color_dict is None:
@@ -55,12 +54,11 @@ class ModelController(QRunnable):
         while self.video_reader.is_open():
             try:
                 frame = self.video_reader.get_one_frame()
-                image = cvtColor(frame, COLOR_BGR2RGB)
                 rect_list = list()
                 for i in self.model_list:
                     rect_list.append(
-                        (i.get_tracking_result(image), self.settings.get_model_color(i.__class__.__name__)))
-                self.frame_queue.put((image, rect_list))
+                        (i.get_tracking_result(frame), self.settings.get_model_color(i.__class__.__name__)))
+                self.frame_queue.put((frame, rect_list))
             except EndOfVideoError:
                 self.settings.if_end = True
                 break
