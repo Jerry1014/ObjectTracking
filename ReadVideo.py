@@ -36,6 +36,18 @@ class ReadVideoBase:
         """
         raise NotImplementedError()
 
+    def is_open(self):
+        """
+        返回视频流是否正常（未结束/出错）
+        """
+        raise NotImplementedError()
+
+    def release_init(self):
+        """
+        用于结束时释放资源
+        :return:
+        """
+
 
 class ReadVideoFromFile(ReadVideoBase):
     """
@@ -83,6 +95,10 @@ class ReadVideoFromFile(ReadVideoBase):
 
 class ReadPicFromDir(ReadVideoBase):
     support_format = ('jpg',)
+
+    def is_open(self):
+        return self.pic_queue.qsize() > 0
+
     def __init__(self):
         self.pic_queue = Queue()
 
@@ -101,3 +117,6 @@ class ReadPicFromDir(ReadVideoBase):
             return self.pic_queue.get()
         else:
             raise EndOfVideoError()
+
+    def release_init(self):
+        pass

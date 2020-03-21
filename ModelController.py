@@ -4,19 +4,20 @@
 import sys
 from configparser import ConfigParser
 from os import getcwd
-from os.path import sep
+from os.path import sep, isdir
+from time import sleep
 
 from PySide2.QtCore import QRunnable
 from cv2.cv2 import cvtColor, COLOR_BGR2RGB
 
-from ReadVideo import ReadVideoFromFile, EndOfVideoError
+from ReadVideo import ReadVideoFromFile, EndOfVideoError, ReadPicFromDir
 
 
 class ModelController(QRunnable):
     def __init__(self, settings):
         super().__init__()
         self.settings = settings
-        self.video_reader = ReadVideoFromFile()
+        self.video_reader = None
         self.model_list = list()
         self.frame_queue = self.settings.frame_queue
 
@@ -25,6 +26,11 @@ class ModelController(QRunnable):
             pass
 
         # 读取第一帧
+        # 判断过于简单，以后修正
+        if isdir(self.settings.filename):
+            self.video_reader = ReadPicFromDir()
+        else:
+            self.video_reader = ReadVideoFromFile()
         self.video_reader.init(self.settings.filename)
         frame = self.video_reader.get_one_frame()
         self.frame_queue.put((frame, list()))
@@ -59,6 +65,8 @@ class ModelController(QRunnable):
                     rect_list.append(
                         (i.get_tracking_result(frame), self.settings.get_model_color(i.__class__.__name__)))
                 self.frame_queue.put((frame, rect_list))
+                while self.frame_queue.qsize() > 10:
+                    sleep(0.1)
             except EndOfVideoError:
                 self.settings.if_end = True
                 break
