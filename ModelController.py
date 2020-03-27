@@ -41,7 +41,7 @@ class ModelController(QRunnable):
             try:
                 m = __import__(i)
                 model = getattr(m, i)()
-                model.set_tracking_object(self.settings.first_frame, self.settings.tracking_object)
+                model.set_tracking_object(self.settings.first_frame, self.settings.tracking_object_rect)
                 self.model_list.append(model)
             except (ModuleNotFoundError, AttributeError):
                 print(f'反射失败 反射模块{i} 模块路径{path} 反射类{i}')
@@ -50,7 +50,7 @@ class ModelController(QRunnable):
         while self.settings.if_pause:
             pass
 
-        while self.video_reader.is_open():
+        while True:
             try:
                 frame = self.video_reader.get_one_frame()
                 rect_list = list()

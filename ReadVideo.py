@@ -66,12 +66,16 @@ class ReadVideoFromFile(ReadVideoBase):
         :return:视频帧
         :raise: EndOfVideo(Exception)视频结束
         """
-        ret, frame = self.video_capture.read()
-        if ret:
-            return cvtColor(frame, COLOR_BGR2RGB)
+        if self.is_open():
+            ret, frame = self.video_capture.read()
+            if ret:
+                return cvtColor(frame, COLOR_BGR2RGB)
+            else:
+                # 此处释放逻辑对于视频可行，对于摄像头则有错
+                self.release_init()
+                raise EndOfVideoError()
         else:
-            # 此处释放逻辑对于视频可行，对于摄像头则有错
-            self.release_init()
+            # fixme 暂且如此
             raise EndOfVideoError()
 
     def release_init(self):
@@ -83,6 +87,7 @@ class ReadVideoFromFile(ReadVideoBase):
 
 class ReadPicFromDir(ReadVideoBase):
     support_format = ('jpg',)
+
     def __init__(self):
         self.pic_queue = Queue()
 
