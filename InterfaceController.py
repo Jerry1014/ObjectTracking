@@ -2,6 +2,7 @@
 界面与模型控制之间的中间件
 """
 from queue import Empty
+from time import time
 
 from PySide2.QtCore import QObject, Signal, QRunnable, Slot
 
@@ -26,7 +27,7 @@ class InterfaceController(QRunnable):
     def run(self):
         while not self.settings.filename:
             pass
-
+        last_frame_time = time()
         frame = self.frame_queue.get()
         self.emit_pic(frame)
         self.settings.first_frame = frame[0]
@@ -37,6 +38,9 @@ class InterfaceController(QRunnable):
                     frame = self.frame_queue.get(timeout=1)
                 except Empty:
                     continue
+                while time() - last_frame_time < 0.04:
+                    pass
+                last_frame_time = time()
                 self.emit_pic(frame)
 
         self.emit_msg('视频结束')
