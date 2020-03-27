@@ -7,16 +7,15 @@ from os import getcwd
 from os.path import sep
 
 from PySide2.QtCore import QRunnable
-from cv2.cv2 import cvtColor, COLOR_BGR2RGB
 
-from ReadVideo import ReadVideoFromFile, EndOfVideoError
+from ReadVideo import EndOfVideoError
 
 
 class ModelController(QRunnable):
     def __init__(self, settings):
         super().__init__()
         self.settings = settings
-        self.video_reader = ReadVideoFromFile()
+        self.video_reader = self.settings.file_reader
         self.model_list = list()
         self.frame_queue = self.settings.frame_queue
 

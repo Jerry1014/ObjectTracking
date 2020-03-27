@@ -5,6 +5,8 @@ from queue import Queue
 
 from numpy.core.multiarray import ndarray
 
+from ReadVideo import ReadVideoFromFile
+
 
 class Settings:
     def __init__(self):
@@ -14,6 +16,7 @@ class Settings:
         self.supported_formats = ('mp4', 'mkv','MP4')
         self.frame_queue_max_num = 24
         self.model_color_dict = None
+        self.file_reader = ReadVideoFromFile()
 
         # 在组件中传递的标记
         self.if_end = None
