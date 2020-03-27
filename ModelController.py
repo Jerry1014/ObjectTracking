@@ -42,7 +42,7 @@ class ModelController(QRunnable):
             try:
                 m = __import__(i)
                 model = getattr(m, i)()
-                model.set_tracking_object(self.settings.tracking_object)
+                model.set_tracking_object(self.settings.first_frame, self.settings.tracking_object)
                 self.model_list.append(model)
             except (ModuleNotFoundError, AttributeError):
                 print(f'反射失败 反射模块{i} 模块路径{path} 反射类{i}')
