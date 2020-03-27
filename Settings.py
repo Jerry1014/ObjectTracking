@@ -21,7 +21,7 @@ class Settings:
         self.filename = None
         self.frame_queue = Queue(self.frame_queue_max_num)
         self.first_frame: ndarray = None
-        self.tracking_object = None
+        self.tracking_object_rect = None
 
     def get_image_from_first_frame_by_rect(self, rect):
         rect = [int(i) for i in rect]

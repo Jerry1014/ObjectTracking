@@ -82,7 +82,7 @@ class MainWin(QtWidgets.QWidget):
             QImage(tracking_object_image, w, h, ch * w, QImage.Format_RGB888))
         if self._show_msg('确认跟踪对象？', if_cancel=True, if_image=True,
                           image=tracking_object_image_pixmap) == QtWidgets.QMessageBox.Ok:
-            self.settings.tracking_object = tracking_object_image
+            self.settings.tracking_object_rect = self.image_win.mouse_press_rect
             self.signal_for_switch_record_mouse_pos.emit()
             self.start_pause_button.setEnabled(True)
 
