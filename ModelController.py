@@ -37,7 +37,8 @@ class ModelController(QRunnable):
         for i in self.settings.model_color_dict.keys():
             path = cf[i]['path']
             if path not in sys.path:
-                sys.path.append(getcwd() + sep + 'Model' + sep + path)
+                path = sep.join([getcwd(), 'Model'] + path.split(' '))
+                sys.path.append(path)
             try:
                 m = __import__(i)
                 model = getattr(m, i)()
@@ -62,4 +63,3 @@ class ModelController(QRunnable):
                 self.settings.if_end = True
                 break
 
-        self.video_reader.release_init()
