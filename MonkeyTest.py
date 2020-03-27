@@ -24,7 +24,7 @@ class TestCaseForReadVideo(unittest.TestCase):
 
     def test_for_read_pic_dir(self):
         from ReadVideo import ReadPicFromDir
-        test_dir = './dataset/Walking2/img'
+        test_dir = './Model/Gradnet/Import/dataset/Walking2/img'
         test = ReadPicFromDir()
         test.init(test_dir)
         from ReadVideo import EndOfVideoError

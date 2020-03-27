@@ -55,12 +55,13 @@ class MainWin(QtWidgets.QWidget):
         # 重要！！！ 对文件的类型等检查在此完成
         while True:
             dialog = QtWidgets.QFileDialog()
-            dialog.setFileMode(QtWidgets.QFileDialog.ExistingFile)
+            # fixme 只能选文件或者文件夹 此处暂时修改为文件夹
+            dialog.setFileMode(QtWidgets.QFileDialog.Directory)
             if dialog.exec_():
                 selected_filename: str = dialog.selectedFiles()[0]
-                if selected_filename.split('.')[-1] not in self.settings.supported_formats:
-                    self._show_msg('不支持的文件格式')
-                    continue
+                # if selected_filename.split('.')[-1] not in self.settings.supported_formats:
+                #     self._show_msg('不支持的文件格式')
+                #     continue
                 self.signal_selected_file.emit(selected_filename)
                 break
             else:
@@ -84,8 +85,8 @@ class MainWin(QtWidgets.QWidget):
                           image=tracking_object_image_pixmap) == QtWidgets.QMessageBox.Ok:
             self.settings.tracking_object_rect = self.image_win.mouse_press_rect
             self.signal_for_switch_record_mouse_pos.emit()
-            self.start_pause_button.setEnabled(True)
 
+            self.start_pause_button.setText('选择模型')
             cf = ConfigParser()
             cf.read('./Model/config.ini')
             model_choose_win = MyWidget(cf.sections(), self.signal_for_close_new_win)
@@ -98,6 +99,7 @@ class MainWin(QtWidgets.QWidget):
     def after_choose_model(self):
         self.settings.model_color_dict = self.new_win.get_all_data()
         self.start_pause_button.clicked.connect(self.pause_tracking)
+        self.start_pause_button.setEnabled(True)
         self.start_pause_button.click()
 
     @Slot()
