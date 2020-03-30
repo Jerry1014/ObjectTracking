@@ -45,8 +45,10 @@ class MainWin(QtWidgets.QWidget):
             self.signal_selected_file.connect(signal_connection.selected_filename)
         self.set_filename()
 
-        # just for test or tmp
+        # 子窗口
         self.new_win = None
+
+        # just for test or tmp
 
     def set_filename(self):
         """
@@ -83,21 +85,22 @@ class MainWin(QtWidgets.QWidget):
             QImage(tracking_object_image, w, h, ch * w, QImage.Format_RGB888))
         if self._show_msg('确认跟踪对象？', if_cancel=True, if_image=True,
                           image=tracking_object_image_pixmap) == QtWidgets.QMessageBox.Ok:
-            self.settings.tracking_object_rect = self.image_win.mouse_press_rect
-            self.signal_for_switch_record_mouse_pos.emit()
-
             self.start_pause_button.setText('选择模型')
             cf = ConfigParser()
             cf.read('./Model/config.ini')
-            model_choose_win = MyWidget(cf.sections(), self.signal_for_close_new_win)
+            model_choose_win = ModelSelectWin(cf.sections(), self.signal_for_close_new_win)
             self.signal_for_close_new_win.connect(self.after_choose_model)
             model_choose_win.show()
             model_choose_win.activateWindow()
             self.new_win = model_choose_win
 
+            self.settings.tracking_object_rect = self.image_win.mouse_press_rect
+            self.signal_for_switch_record_mouse_pos.emit()
+
     @Slot()
     def after_choose_model(self):
         self.settings.model_color_dict = self.new_win.get_all_data()
+        self.new_win = None
         self.start_pause_button.clicked.connect(self.pause_tracking)
         self.start_pause_button.setEnabled(True)
         self.start_pause_button.click()
@@ -198,7 +201,7 @@ class MyImageLabel(QtWidgets.QLabel):
             self.mouse_press_rect = (
                 *self.mouse_press_rect[:2], end_pos[0] - self.mouse_press_rect[0],
                 end_pos[1] - self.mouse_press_rect[1])
-            self.needed_paint_rect_list.append((self.mouse_press_rect, 'blue'))
+            self.needed_paint_rect_list = [(self.mouse_press_rect, 'blue')]
             self.repaint()
             self.signal_after_setting_tracking_object.emit()
 
@@ -231,7 +234,7 @@ class AModelElection(QtWidgets.QWidget):
         return (self.check_box.text(), self.color_select.currentText()) if self.check_box.isChecked() else (None, None)
 
 
-class MyWidget(QtWidgets.QWidget):
+class ModelSelectWin(QtWidgets.QWidget):
     def __init__(self, model_name_list, close_signal):
         super().__init__()
         self.close_signal = close_signal

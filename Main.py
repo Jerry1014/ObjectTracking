@@ -3,7 +3,7 @@
 """
 
 from PySide2 import QtWidgets
-from PySide2.QtCore import QThreadPool
+from PySide2.QtCore import QThreadPool, QProcess
 
 from Interface import MainWin
 from InterfaceController import InterfaceController
@@ -14,14 +14,14 @@ from Settings import settings
 class Start:
     def __init__(self):
         self.settings = settings
-        self.controller = InterfaceController(self.settings)
+        self.interface_controller = InterfaceController(self.settings)
         self.model_controller = ModelController(self.settings)
 
     def run(self):
         app = QtWidgets.QApplication([])
 
-        widget = MainWin(self.settings, self.controller.signal_connection)
-        QThreadPool.globalInstance().start(self.controller)
+        widget = MainWin(self.settings, self.interface_controller.signal_connection)
+        QThreadPool.globalInstance().start(self.interface_controller)
         QThreadPool.globalInstance().start(self.model_controller)
         widget.show()
 

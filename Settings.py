@@ -38,3 +38,4 @@ class Settings:
 
 
 settings = Settings()
+"json:{}"

@@ -2,7 +2,7 @@
 界面与模型控制之间的中间件
 """
 from queue import Empty
-from time import time
+from time import time, sleep
 
 from PySide2.QtCore import QObject, Signal, QRunnable, Slot
 
@@ -33,6 +33,7 @@ class InterfaceController(QRunnable):
         self.settings.first_frame = frame[0]
         self.settings.if_pause = True
         while not (self.settings.if_end and self.frame_queue.qsize() == 0):
+            """轮询管道内的视频帧"""
             if not self.settings.if_pause:
                 try:
                     frame = self.frame_queue.get(timeout=1)
@@ -42,6 +43,8 @@ class InterfaceController(QRunnable):
                     pass
                 last_frame_time = time()
                 self.emit_pic(frame)
+            else:
+                sleep(0.5)
 
         self.emit_msg('视频结束')
 
