@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 import sys
 from configparser import ConfigParser
+from time import time, sleep
 
 from PySide2 import QtWidgets
 from PySide2.QtCore import Slot, Signal, QRect
@@ -14,6 +15,7 @@ class MainWin(QtWidgets.QWidget):
     signal_for_switch_paint = Signal()
     signal_for_rect = Signal(list)
     signal_for_close_new_win = Signal()
+    signal_for_finish_one_frame = Signal()
 
     def __init__(self, settings, signal_connection):
         """
@@ -23,7 +25,8 @@ class MainWin(QtWidgets.QWidget):
         super().__init__()
         # 设置
         self.settings = settings
-        self.setFixedSize(*self.settings.init_fix_rect)
+        if self.settings.init_fix_rect:
+            self.setFixedSize(*self.settings.init_fix_rect)
         self.settings.if_pause = False
 
         # 窗口部件
@@ -43,12 +46,14 @@ class MainWin(QtWidgets.QWidget):
             signal_connection.pic_signal.connect(self.set_pic)
             signal_connection.msg_signal.connect(self.show_msg)
             self.signal_selected_file.connect(signal_connection.selected_filename)
+            self.signal_for_finish_one_frame.connect(signal_connection.finish_one_frame_signal)
         self.set_filename()
 
         # 子窗口
         self.new_win = None
 
         # just for test or tmp
+        self.last_set_frame_time = time()
 
     def set_filename(self):
         """
@@ -146,11 +151,16 @@ class MainWin(QtWidgets.QWidget):
         显示图片
         :param image: 一定要是ndarray，RGB888格式
         """
-        image, rect_list = frame
+        while time() - self.last_set_frame_time < 0.03:
+            sleep(0.01)
+        image, rect_list, _ = frame
         h, w, ch = image.shape
         self.setFixedSize(w, h)
         self.image_win.setPixmap(QPixmap.fromImage(QImage(image, w, h, ch * w, QImage.Format_RGB888)))
         self.signal_for_rect.emit(rect_list)
+        self.repaint()
+        self.signal_for_finish_one_frame.emit()
+        self.last_set_frame_time = time()
 
 
 class MyImageLabel(QtWidgets.QLabel):

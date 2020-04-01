@@ -12,10 +12,10 @@ from ReadVideo import ReadVideoFromFile, ReadPicFromDir
 class Settings:
     def __init__(self):
         # 设置项
-        self.init_fix_rect = (1000, 800)
+        self.init_fix_rect = None
         # fixme 后缀名大小写
         self.supported_formats = ('mp4', 'mkv','MP4')
-        self.frame_queue_max_num = 24
+        self.frame_queue_max_num = 10
         self.model_color_dict = None
         self.file_reader = ReadPicFromDir()
 
@@ -23,7 +23,7 @@ class Settings:
         self.if_end = None
         self.if_pause = True
         self.filename = None
-        self.frame_queue = Queue(self.frame_queue_max_num)
+        self.frame_queue = Queue(maxsize=self.frame_queue_max_num)
         self.first_frame: ndarray = None
         self.tracking_object_rect = None
 
