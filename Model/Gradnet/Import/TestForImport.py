@@ -4,13 +4,15 @@ from numpy import array
 
 
 class TestForImport(BaseModel):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, input_queue, output_queue, rect_color, exit_event):
         self.model = just_show()
+        super().__init__(input_queue, output_queue, rect_color, exit_event)
 
-    def set_tracking_object(self, first_frame, tracking_object):
+    def _set_tracking_object(self):
         # yx hw
-        self.model.send((first_frame, (array(tracking_object[1::-1]), array(tracking_object[-1:-3:-1]))))
+        super()._set_tracking_object()
+        self.model.send(
+            (self.first_frame, (array(self.tracking_object_rect[1::-1]), array(self.tracking_object_rect[-1:-3:-1]))))
 
     def get_tracking_result(self, cur_frame):
         return self.model.send(cur_frame)
