@@ -1,9 +1,7 @@
-from multiprocessing import Queue
-
-from Model.Model import BaseModel
+from Model.Model import ModelBaseWithMultiProcess
 
 
-class TestModel(BaseModel):
+class TestModel(ModelBaseWithMultiProcess):
     def __init__(self, input_queue, output_queue, rect_color, exit_event):
         super().__init__(input_queue, output_queue, rect_color, exit_event)
         self.x = 0

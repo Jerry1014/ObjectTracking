@@ -2,10 +2,10 @@
 模型类，给定跟踪的对象和当前帧，输出跟踪结果
 """
 from multiprocessing import Process, Event
-from queue import Queue
+from queue import Queue, Empty
 
 
-class BaseModel(Process):
+class ModelBaseWithMultiProcess(Process):
     def __init__(self, input_queue: Queue, output_queue: Queue, rect_color, exit_event: Event):
         super().__init__()
         self.first_frame = None
@@ -34,6 +34,9 @@ class BaseModel(Process):
 
     def run(self) -> None:
         while True:
-            self.output_queue.put(self.get_tracking_result(self.input_queue.get(timeout=1)), self.color)
+            try:
+                self.output_queue.put((self.get_tracking_result(self.input_queue.get(timeout=1)), self.color))
+            except Empty:
+                pass
             if self.exit_event.is_set():
                 break
