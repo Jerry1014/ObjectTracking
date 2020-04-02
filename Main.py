@@ -1,6 +1,7 @@
 """
 主文件，负责连接个部分和启动
 """
+import sys
 
 from PySide2 import QtWidgets
 from PySide2.QtCore import QThreadPool, QProcess

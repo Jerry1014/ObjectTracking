@@ -1,11 +1,13 @@
 from queue import Empty
 
-from Model.Gradnet.Import.track import just_show
 from numpy import array
 
+from Model.Gradnet.Import.track import just_show
 
-class TestForImport():
+
+class TestForImport:
     def __init__(self, input_queue, output_queue, rect_color, exit_event):
+        super().__init__()
         self.model = just_show()
         self.first_frame = None
         self.tracking_object_rect = None
@@ -13,7 +15,6 @@ class TestForImport():
         self.output_queue = output_queue
         self.color = rect_color
         self.exit_event = exit_event
-        self._set_tracking_object()
 
     def _set_tracking_object(self):
         # yx hw
@@ -26,7 +27,8 @@ class TestForImport():
     def get_tracking_result(self, cur_frame):
         return self.model.send(cur_frame)
 
-    def start(self) -> None:
+    def start(self):
+        self._set_tracking_object()
         while True:
             try:
                 self.output_queue.put((self.get_tracking_result(self.input_queue.get(timeout=1)), self.color))

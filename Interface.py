@@ -155,7 +155,7 @@ class MainWin(QtWidgets.QWidget):
             sleep(0.01)
         image, rect_list, _ = frame
         h, w, ch = image.shape
-        self.setFixedSize(w, h)
+        self.image_win.setFixedSize(w, h)
         self.image_win.setPixmap(QPixmap.fromImage(QImage(image, w, h, ch * w, QImage.Format_RGB888)))
         self.signal_for_rect.emit(rect_list)
         self.repaint()
