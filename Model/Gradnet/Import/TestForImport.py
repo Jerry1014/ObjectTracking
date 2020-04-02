@@ -1,11 +1,12 @@
 from queue import Empty
 
+from PySide2.QtCore import QRunnable, QThreadPool
 from numpy import array
 
 from Model.Gradnet.Import.track import just_show
 
 
-class TestForImport:
+class Test2(QRunnable):
     def __init__(self, input_queue, output_queue, rect_color, exit_event):
         super().__init__()
         self.model = just_show()
@@ -27,7 +28,7 @@ class TestForImport:
     def get_tracking_result(self, cur_frame):
         return self.model.send(cur_frame)
 
-    def start(self):
+    def run(self):
         self._set_tracking_object()
         while True:
             try:
@@ -36,3 +37,11 @@ class TestForImport:
                 pass
             if self.exit_event.is_set():
                 break
+
+
+class TestForImport:
+    def __init__(self, input_queue, output_queue, rect_color, exit_event):
+        self.my_class = Test2(input_queue, output_queue, rect_color, exit_event)
+
+    def start(self):
+        QThreadPool.globalInstance().start(self.my_class)

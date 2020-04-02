@@ -1,3 +1,4 @@
+# Modified by lipeixia 2019.
 """
 @InProceedings{GradNet_ICCV2019,
 author = {Peixia Li, Boyu Chen, Wanli Ouyang, Dong Wang, Xiaoyun Yang, Huchuan Lu},
@@ -8,13 +9,11 @@ year = {2019}
 }
 """
 import os
-import time
 
 import cv2
 import numpy as np
 import tensorflow as tf
-
-from Model.Gradnet.Import.siamese import SiameseNet
+from siamese import SiameseNet
 
 
 def getOpts(opts):
@@ -38,37 +37,6 @@ def getOpts(opts):
     opts['subMean'] = False
     opts['model_path'] = './ckpt/base_l5_1t_49/model_epoch49.ckpt'
     return opts
-
-
-def getAxisAlignedBB(region):
-    region = np.array(region)
-    nv = region.size
-    assert (nv == 8 or nv == 4)
-
-    if nv == 8:
-        xs = region[0:: 2]
-        ys = region[1:: 2]
-        cx = np.mean(xs)
-        cy = np.mean(ys)
-        x1 = min(xs)
-        x2 = max(xs)
-        y1 = min(ys)
-        y2 = max(ys)
-        A1 = np.linalg.norm(np.array(region[0:2]) - np.array(region[2:4])) * np.linalg.norm(
-            np.array(region[2:4]) - np.array(region[4:6]))
-        A2 = (x2 - x1) * (y2 - y1)
-        s = np.sqrt(A1 / A2)
-        w = s * (x2 - x1) + 1
-        h = s * (y2 - y1) + 1
-    else:
-        x = region[0]
-        y = region[1]
-        w = region[2]
-        h = region[3]
-        cx = x + w / 2
-        cy = y + h / 2
-
-    return cx - 1, cy - 1, w, h
 
 
 def frameGenerator(vpath):
@@ -339,115 +307,18 @@ def trackerEval(score, score_nosia, sx, targetPosition, window, opts):
     return newTargetPosition, bestScale
 
 
-def get_sequence(data_dir, seq_name):
-    # generate config from a sequence name
-    img_dir = os.path.join(data_dir, seq_name, 'img')
-    gt_path = os.path.join(data_dir, seq_name, 'groundtruth_rect.txt')
-    included_extenstions = ['jpg', 'jpeg', 'png', 'bmp', 'gif']
-    img_list = [fn for fn in os.listdir(img_dir)
-                if any(fn.endswith(ext) for ext in included_extenstions)]
-    # file_names.sort()
-    # img_num = len(file_names)
-    # img_list = os.listdir(img_dir)
-    img_list.sort()
-    img_list = [os.path.join(img_dir, x) for x in img_list]
-    with open(gt_path) as f:
-        gt = np.loadtxt((x.replace(',', ' ') for x in f))
-
-    n_frames = len(img_list)
-    if not n_frames == len(gt):
-        img_list = img_list[0:len(gt)]
-        n_frames = len(gt)
-    # gt = np.loadtxt(gt_path,delimiter=',')
-    init_bbox = gt[0]
-    return img_list, init_bbox, gt
-
-
-def _compile_results(gt, bboxes, dist_threshold):
-    l = np.size(bboxes, 0)
-    gt4 = np.zeros((l, 4))
-    new_distances = np.zeros(l)
-    new_ious = np.zeros(l)
-    n_thresholds = 50
-    precisions_ths = np.zeros(n_thresholds)
-
-    for i in range(l):
-        gt4[i, :] = region_to_bbox(gt[i, :], center=False)
-        new_distances[i] = _compute_distance(bboxes[i, :], gt4[i, :])
-        new_ious[i] = _compute_iou(bboxes[i, :], gt4[i, :])
-
-    # what's the percentage of frame in which center displacement is inferior to given threshold? (OTB metric)
-    precision = np.float(sum(new_distances < dist_threshold)) / np.size(new_distances) * 100
-
-    # find above result for many thresholds, then report the AUC
-    thresholds = np.linspace(0, 25, n_thresholds + 1)
-    thresholds = thresholds[-n_thresholds:]
-    # reverse it so that higher values of precision goes at the beginning
-    thresholds = thresholds[::-1]
-    for i in range(n_thresholds):
-        precisions_ths[i] = np.float(sum(new_distances < thresholds[i])) / np.size(new_distances)
-
-    # integrate over the thresholds
-    precision_auc = np.trapz(precisions_ths)
-
-    # per frame averaged intersection over union (OTB metric)
-    iou = np.mean(new_ious) * 100
-
-    return l, precision, precision_auc, iou
-
-
-def _compute_distance(boxA, boxB):
-    a = np.array((boxA[0] + boxA[2] / 2, boxA[1] + boxA[3] / 2))
-    b = np.array((boxB[0] + boxB[2] / 2, boxB[1] + boxB[3] / 2))
-    dist = np.linalg.norm(a - b)
-
-    assert dist >= 0
-    assert dist != float('Inf')
-
-    return dist
-
-
-def _compute_iou(boxA, boxB):
-    # determine the (x, y)-coordinates of the intersection rectangle
-    xA = max(boxA[0], boxB[0])
-    yA = max(boxA[1], boxB[1])
-    xB = min(boxA[0] + boxA[2], boxB[0] + boxB[2])
-    yB = min(boxA[1] + boxA[3], boxB[1] + boxB[3])
-
-    if xA < xB and yA < yB:
-        # compute the area of intersection rectangle
-        interArea = (xB - xA) * (yB - yA)
-        # compute the area of both the prediction and ground-truth
-        # rectangles
-        boxAArea = boxA[2] * boxA[3]
-        boxBArea = boxB[2] * boxB[3]
-        # compute the intersection over union by taking the intersection
-        # area and dividing it by the sum of prediction + ground-truth
-        # areas - the intersection area
-        iou = interArea / float(boxAArea + boxBArea - interArea)
-    else:
-        iou = 0
-
-    assert iou >= 0
-    assert iou <= 1.01
-
-    return np.float(iou)
-
-
 '''----------------------------------------main-----------------------------------------------------'''
 
 
 def run_siamesefc(opts, exemplarOp_init, instanceOp_init, instanceOp, zFeat2Op_gra, zFeat5Op_gra, zFeat5Op_sia,
                   scoreOp_sia, scoreOp_gra, zFeat2Op_init, sess, display):
-    # nImgs = len(imgs)
-    # startFrame = 0
-    # im = imgs[startFrame]
     my_img, tracking_object = yield
+    # todo 追踪目标位置和大小
     targetPosition, targetSize = tracking_object
     im = my_img
 
     avgChans = np.mean(im, axis=(
-        0, 1))  # [np.mean(np.mean(img[:, :, 0])), np.mean(np.mean(img[:, :, 1])), np.mean(np.mean(img[:, :, 2]))]
+        0, 1))
     wcz = targetSize[1] + opts['contextAmount'] * np.sum(targetSize)
     hcz = targetSize[0] + opts['contextAmount'] * np.sum(targetSize)
     sz = np.sqrt(wcz * hcz)
@@ -491,7 +362,6 @@ def run_siamesefc(opts, exemplarOp_init, instanceOp_init, instanceOp, zFeat2Op_g
     template_sia = np.copy(zFeat5_sia_init)
     hid_gra = np.copy(zFeat2_gra_init)
 
-    tic = time.time()
     train_all = []
     frame_all = []
     F_max_all = 0
@@ -532,8 +402,6 @@ def run_siamesefc(opts, exemplarOp_init, instanceOp_init, instanceOp, zFeat2Op_g
                                             feed_dict={zFeat5Op_gra: template_gra,
                                                        zFeat5Op_sia: template_sia,
                                                        instanceOp: xCrops})
-            # sio.savemat('score.mat', {'score': score})
-            # score_gra = np.copy(np.expand_dims(score_sia[1],0))
 
             newTargetPosition, newScale = trackerEval(score_sia, score_gra, round(sx), targetPosition, window, opts)
 
@@ -541,7 +409,6 @@ def run_siamesefc(opts, exemplarOp_init, instanceOp_init, instanceOp, zFeat2Op_g
             sx = max(minSx, min(maxSx, (1 - opts['scaleLr']) * sx + opts['scaleLr'] * scaledInstance[newScale]))
             F_max = np.max(score_sia)
             targetSize = (1 - opts['scaleLr']) * targetSize + opts['scaleLr'] * scaledTarget[newScale]
-            # print('frame:%d--loss:%f--frame_now:%d' %(i, np.max(score),frame_now))
 
             if refind:
 
@@ -582,16 +449,6 @@ def run_siamesefc(opts, exemplarOp_init, instanceOp_init, instanceOp, zFeat2Op_g
 
         if Position_now[0] + Position_now[2] > im.shape[1] and F_max < F_max_thred * 0.5:
             refind = 1
-
-        '''if you want use groundtruth'''
-
-        # region = np.copy(gt[i])
-
-        # cx, cy, w, h = getAxisAlignedBB(region)
-        # pos = np.array([cy, cx])
-        # targetSz = np.array([h, w])
-        # iou_ = _compute_distance(region, Position_now)
-        #
 
         '''save the reliable training sample'''
         if F_max >= min(F_max_thred * 0.5, np.mean(updata_features_score)):
@@ -640,10 +497,7 @@ def just_show():
     exemplarOp_init = tf.placeholder(tf.float32, [1, opts['exemplarSize'], opts['exemplarSize'], 3])
     instanceOp_init = tf.placeholder(tf.float32, [1, opts['instanceSize'], opts['instanceSize'], 3])
     instanceOp = tf.placeholder(tf.float32, [3, opts['instanceSize'], opts['instanceSize'], 3])
-    template_Op = tf.placeholder(tf.float32, [1, 6, 6, 256])
-    search_tr_Op = tf.placeholder(tf.float32, [3, 22, 22, 32])
     isTrainingOp = tf.convert_to_tensor(False, dtype='bool', name='is_training')
-    lr = tf.constant(0.0001, dtype='float32')
     sn = SiameseNet()
 
     '''build the model'''
@@ -652,7 +506,6 @@ def just_show():
         zFeat2Op_init, zFeat5Op_init = sn.extract_gra_fea_template(exemplarOp_init, opts, isTrainingOp)
         scoreOp_init = sn.response_map_cal(instanceOp_init, zFeat5Op_init, opts, isTrainingOp)
     # gradient calculation
-    labels = np.ones([8], dtype=np.float32)
     respSz = int(scoreOp_init.get_shape()[1])
     respSz = [respSz, respSz]
     respStride = 8
@@ -675,22 +528,10 @@ def just_show():
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.Session(config=config)
-
-    # saver.restore(sess, opts['model_path'])
-    saver.restore(sess, r'C:\tem\PycharmProjects\ObjectTracking\Model\Gradnet\Import\ckpt\base_l5_1t_49\model_epoch49.ckpt')
-
-
-    n_seq = 1
-    speed = np.zeros(n_seq)
-    precisions = np.zeros(n_seq)
-    precisions_auc = np.zeros(n_seq)
-    ious = np.zeros(n_seq)
-    lengths = np.zeros(n_seq)
+    saver.restore(sess,
+                  r'C:\tem\PycharmProjects\ObjectTracking\Model\Gradnet\Import\ckpt\base_l5_1t_49\model_epoch49.ckpt')
 
     '''tracking process'''
-    i = 0
-    idx = i
-    # print(seq)
     tem = run_siamesefc(opts, exemplarOp_init, instanceOp_init, instanceOp,
                         zFeat2Op_gra, zFeat5Op_gra, zFeat5Op_sia, scoreOp_sia,
                         scoreOp_gra, zFeat2Op_init, sess, display=False)
