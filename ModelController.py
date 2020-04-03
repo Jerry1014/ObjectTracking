@@ -5,11 +5,12 @@ import sys
 from configparser import ConfigParser
 from multiprocessing import Queue, Event
 from os import getcwd
-from os.path import sep
+from os.path import sep, dirname
 from time import sleep
 
 from PySide2.QtCore import QRunnable
 
+from GroundTrue.GroundTrueParser1 import GroundTrueParser1
 from ReadVideo import EndOfVideoError
 
 
@@ -23,15 +24,30 @@ class ModelController(QRunnable):
         self.model_output_queue_list = list()
         self.exit_event = Event()
         self.exit_event.clear()
+        self.if_have_gt = False
+        self.gt_iterator = None
 
     def run(self):
         while not self.settings.filename:
-            pass
+            sleep(0.5)
 
         # 读取第一帧
         self.video_reader.init(self.settings.filename)
         frame = self.video_reader.get_one_frame()
         self.frame_queue.put((frame, list(), 0))
+
+        # 准备ground true
+        cf = ConfigParser()
+        dataset_dir = dirname(self.settings.filename) + sep
+        cf.read(dataset_dir + 'config.ini')
+        try:
+            gt_parser_section = cf[cf.sections()[0]]
+            gt_filename = gt_parser_section['ground_true_filename']
+            self.gt_iterator = GroundTrueParser1().get_result_iterator(dataset_dir + gt_filename) \
+                if gt_parser_section['parser'] == '0' else None
+            self.if_have_gt = True
+        except AttributeError:
+            pass
 
         # 等待用户选择模型
         while self.settings.model_color_dict is None:
@@ -74,6 +90,9 @@ class ModelController(QRunnable):
                 # 取回模型结果
                 for i in self.model_output_queue_list:
                     result_rect_list.append(i.get())
+                # 取gt
+                if self.if_have_gt:
+                    result_rect_list.append((next(self.gt_iterator), 'green'))
                 test += 1
                 self.frame_queue.put((frame, result_rect_list, test))
             except EndOfVideoError:

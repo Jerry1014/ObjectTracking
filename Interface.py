@@ -225,7 +225,7 @@ class MyImageLabel(QtWidgets.QLabel):
 
 
 class AModelElection(QtWidgets.QWidget):
-    color = ('red', 'orange', 'yellow', 'green', 'blue')
+    color = ('red', 'orange', 'yellow', 'blue')
 
     def __init__(self, model_name, if_selected=False):
         super().__init__()
