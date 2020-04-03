@@ -22,8 +22,9 @@ class Test2(QRunnable):
         tracking_object = self.input_queue.get()
         self.first_frame = tracking_object[0]
         self.tracking_object_rect = tracking_object[1]
+        x, y, w, h = self.tracking_object_rect
         self.model.send(
-            (self.first_frame, (array(self.tracking_object_rect[1::-1]), array(self.tracking_object_rect[-1:-3:-1]))))
+            (self.first_frame, (array((y + h / 2, x + w / 2)), array((h, w)))))
 
     def get_tracking_result(self, cur_frame):
         return self.model.send(cur_frame)

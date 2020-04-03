@@ -541,7 +541,7 @@ def just_show():
 
 if __name__ == '__main__':
     test = just_show()
-    imgs, targetPosition, targetSize, gt = loadVideoInfo("./dataset/", 'Walking2')
+    imgs, targetPosition, targetSize, gt = loadVideoInfo("../../../resources/video", 'Walking2')
     test.send((imgs[0], (targetPosition, targetSize)))
     for i in imgs[1:]:
         print(test.send(i))
