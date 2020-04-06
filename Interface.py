@@ -24,6 +24,7 @@ class MainWin(QtWidgets.QWidget):
         """
         super().__init__()
         # 设置
+        self.setWindowTitle('目标跟踪')
         self.settings = settings
         if self.settings.init_fix_rect:
             self.setFixedSize(*self.settings.init_fix_rect)
@@ -45,6 +46,7 @@ class MainWin(QtWidgets.QWidget):
         if signal_connection is not None:
             signal_connection.pic_signal.connect(self.set_pic)
             signal_connection.msg_signal.connect(self.show_msg)
+            signal_connection.model_ready_signal.connect(self.after_model_ready)
             self.signal_selected_file.connect(signal_connection.selected_filename)
             self.signal_for_finish_one_frame.connect(signal_connection.finish_one_frame_signal)
         self.set_filename()
@@ -52,8 +54,9 @@ class MainWin(QtWidgets.QWidget):
         # 子窗口
         self.new_win = None
 
-        # just for test or tmp
+        # 其他
         self.last_set_frame_time = time()
+        self.if_all_model_ready = False
 
     def set_filename(self):
         """
@@ -106,6 +109,10 @@ class MainWin(QtWidgets.QWidget):
     def after_choose_model(self):
         self.settings.model_color_dict = self.new_win.get_all_data()
         self.new_win = None
+        self.start_pause_button.setText('模型载入中')
+
+    @Slot()
+    def after_model_ready(self):
         self.start_pause_button.clicked.connect(self.pause_tracking)
         self.start_pause_button.setEnabled(True)
         self.start_pause_button.click()
@@ -153,6 +160,7 @@ class MainWin(QtWidgets.QWidget):
         """
         while time() - self.last_set_frame_time < 0.03:
             sleep(0.01)
+        self.last_set_frame_time = time()
         image, rect_list, _ = frame
         h, w, ch = image.shape
         self.image_win.setFixedSize(w, h)
@@ -160,7 +168,6 @@ class MainWin(QtWidgets.QWidget):
         self.signal_for_rect.emit(rect_list)
         self.repaint()
         self.signal_for_finish_one_frame.emit()
-        self.last_set_frame_time = time()
 
 
 class MyImageLabel(QtWidgets.QLabel):
@@ -247,6 +254,7 @@ class AModelElection(QtWidgets.QWidget):
 class ModelSelectWin(QtWidgets.QWidget):
     def __init__(self, model_name_list, close_signal):
         super().__init__()
+        self.setWindowTitle('选择模型')
         self.close_signal = close_signal
         self.layout = QtWidgets.QVBoxLayout()
         self.model_election_list = list()

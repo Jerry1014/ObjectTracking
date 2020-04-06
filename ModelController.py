@@ -75,10 +75,6 @@ class ModelController(QRunnable):
             except (ModuleNotFoundError, AttributeError) as e:
                 print(f'反射失败 反射模块{i} 模块路径{path} 反射类{i} 失败原因{e}')
 
-        # 等待用户选择开始
-        while self.settings.if_pause:
-            sleep(0.5)
-
         test = 0
         while True:
             try:

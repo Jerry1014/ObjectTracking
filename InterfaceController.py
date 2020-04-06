@@ -12,6 +12,7 @@ class InterfaceSignalConnection(QObject):
     selected_filename = Slot(str)
     pic_signal = Signal(list)
     finish_one_frame_signal = Slot()
+    model_ready_signal = Signal()
 
 
 class InterfaceController(QRunnable):
@@ -31,25 +32,34 @@ class InterfaceController(QRunnable):
     def run(self):
         while not self.settings.filename:
             pass
+        # 第一帧
         frame = self.frame_queue.get()
         self.emit_pic(frame)
         self.settings.first_frame = frame[0]
         self.settings.if_pause = True
-        while not (self.settings.if_end and self.frame_queue.qsize() == 0):
-            """轮询管道内的视频帧"""
-            if not self.settings.if_pause:
-                try:
-                    frame = self.frame_queue.get(timeout=1)
-                except Empty:
-                    continue
-                self.emit_pic(frame)
-                self.controller_cur_frame_num += 1
-                while self.controller_cur_frame_num - self.interface_cur_frame_num > 1:
-                    sleep(0.05)
-            else:
-                sleep(0.5)
 
-        self.emit_msg('视频结束')
+        # 当模型准备好后发送信号
+        while self.frame_queue.qsize() == 0:
+            sleep(0.5)
+        self.signal_connection.model_ready_signal.emit()
+
+        # 后续帧发送
+        while not (self.settings.if_end and self.frame_queue.qsize() == 0):
+            try:
+                frame = self.frame_queue.get(timeout=1)
+            except Empty:
+                continue
+            while self.settings.if_pause:
+                sleep(0.5)
+            self.emit_pic(frame)
+            self.controller_cur_frame_num += 1
+            while self.controller_cur_frame_num - self.interface_cur_frame_num > 1:
+                sleep(0.05)
+
+        try:
+            self.emit_msg('视频结束')
+        except RuntimeError:
+            pass
 
     @Slot()
     def after_selected_file(self, filename: str):

@@ -38,5 +38,8 @@ class ModelBaseWithMultiProcess(Process):
                 self.output_queue.put((self.get_tracking_result(self.input_queue.get(timeout=1)), self.color))
             except Empty:
                 pass
+            except Exception as e:
+                print(e)
+                return
             if self.exit_event.is_set():
                 break
