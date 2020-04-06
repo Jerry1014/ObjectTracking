@@ -65,13 +65,12 @@ class MainWin(QtWidgets.QWidget):
         # 重要！！！ 对文件的类型等检查在此完成
         while True:
             dialog = QtWidgets.QFileDialog()
-            # fixme 只能选文件或者文件夹 此处暂时修改为文件夹
-            dialog.setFileMode(QtWidgets.QFileDialog.Directory)
+            dialog.setFileMode(QtWidgets.QFileDialog.ExistingFile)
             if dialog.exec_():
                 selected_filename: str = dialog.selectedFiles()[0]
-                # if selected_filename.split('.')[-1] not in self.settings.supported_formats:
-                #     self._show_msg('不支持的文件格式')
-                #     continue
+                if selected_filename.split('.')[-1].lower() not in self.settings.supported_formats:
+                    self._show_msg('不支持的文件格式')
+                    continue
                 self.signal_selected_file.emit(selected_filename)
                 break
             else:

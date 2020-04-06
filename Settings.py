@@ -14,10 +14,10 @@ class Settings:
         # 设置项
         self.init_fix_rect = None
         # fixme 后缀名大小写
-        self.supported_formats = ('mp4', 'mkv','MP4')
+        self.supported_formats = ('mp4', 'mkv', 'avi', 'mpg')
         self.frame_queue_max_num = 10
         self.model_color_dict = None
-        self.file_reader = ReadPicFromDir()
+        self.file_reader = ReadVideoFromFile()
 
         # 在组件中传递的标记
         self.if_end = None

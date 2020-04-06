@@ -1,3 +1,14 @@
+"""
+模型来源
+@InProceedings{GradNet_ICCV2019,
+author = {Peixia Li, Boyu Chen, Wanli Ouyang, Dong Wang, Xiaoyun Yang, Huchuan Lu},
+title = {GradNet: Gradient-Guided Network for Visual Object Tracking},
+booktitle = {ICCV},
+month = {October},
+year = {2019}
+}
+"""
+
 from queue import Empty
 
 from PySide2.QtCore import QRunnable, QThreadPool
@@ -6,7 +17,7 @@ from numpy import array
 from Model.Gradnet.Import.track import just_show
 
 
-class Test2(QRunnable):
+class ImportThread(QRunnable):
     def __init__(self, input_queue, output_queue, rect_color, exit_event):
         super().__init__()
         self.model = just_show()
@@ -43,9 +54,9 @@ class Test2(QRunnable):
                 break
 
 
-class TestForImport:
+class GradnetImport:
     def __init__(self, input_queue, output_queue, rect_color, exit_event):
-        self.my_class = Test2(input_queue, output_queue, rect_color, exit_event)
+        self.my_class = ImportThread(input_queue, output_queue, rect_color, exit_event)
 
     def start(self):
         QThreadPool.globalInstance().start(self.my_class)

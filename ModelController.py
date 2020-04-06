@@ -46,7 +46,7 @@ class ModelController(QRunnable):
             self.gt_iterator = GroundTrueParser1().get_result_iterator(dataset_dir + gt_filename) \
                 if gt_parser_section['parser'] == '0' else None
             self.if_have_gt = True
-        except AttributeError:
+        except IndexError:
             pass
 
         # 等待用户选择模型
