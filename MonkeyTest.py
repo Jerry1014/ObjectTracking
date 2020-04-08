@@ -6,18 +6,16 @@ class TestCaseForReadVideo(unittest.TestCase):
     from ReadVideo import ReadVideoFromFile, EndOfVideoError
 
     def test_for_read_video(self):
-        from cv2.cv2 import imshow, waitKey
+        from cv2.cv2 import imshow, waitKey, cvtColor, COLOR_RGB2BGR
         cap = TestCaseForReadVideo.ReadVideoFromFile()
-        cap.init('./Resources/video/因为我穷.mp4')
+        cap.init('./Resources/video/Browse1.mpg')
+        print(cap.get_frame_total_num())
         while cap.is_open():
             try:
                 frame = cap.get_one_frame()
-                print(frame)
             except TestCaseForReadVideo.EndOfVideoError:
                 assert True
                 break
-            from cv2.cv2 import cvtColor
-            from cv2.cv2 import COLOR_RGB2BGR
             imshow('image', cvtColor(frame, COLOR_RGB2BGR))
             waitKey(0)
         cap.release_init()
