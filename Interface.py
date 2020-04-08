@@ -4,8 +4,11 @@ from configparser import ConfigParser
 from time import time, sleep
 
 from PySide2 import QtWidgets
-from PySide2.QtCore import Slot, Signal, QRect
+from PySide2.QtCore import Slot, Signal, QRect, Qt
 from PySide2.QtGui import QPixmap, QImage, QMouseEvent, QPaintEvent, QPainter, QCloseEvent
+from PySide2.QtWidgets import QSlider
+
+from InterfaceController import InterfaceSignalConnection
 
 
 class MainWin(QtWidgets.QWidget):
@@ -17,7 +20,7 @@ class MainWin(QtWidgets.QWidget):
     signal_for_close_new_win = Signal()
     signal_for_finish_one_frame = Signal()
 
-    def __init__(self, settings, signal_connection):
+    def __init__(self, settings, signal_connection:InterfaceSignalConnection):
         """
         :param settings: 设置类
         :param signal_connection: 用来连接的外部信号，未做信号存在及未来升级的设计优化
@@ -34,11 +37,14 @@ class MainWin(QtWidgets.QWidget):
         self.image_win = MyImageLabel(self.signal_for_switch_record_mouse_pos, self.signal_for_switch_paint,
                                       self.signal_for_rect, self.signal_after_setting_tracking_object)
         self.start_pause_button = QtWidgets.QPushButton('载入视频')
+        self.frame_num_slider = QSlider(Qt.Horizontal)
+        self.frame_num_slider.setValue(0)
 
         # 布局
         self.layout = QtWidgets.QVBoxLayout()
         self.layout.addWidget(self.image_win)
         self.layout.addWidget(self.start_pause_button)
+        self.layout.addWidget(self.frame_num_slider)
         self.setLayout(self.layout)
 
         # 信号/槽相关
@@ -47,7 +53,8 @@ class MainWin(QtWidgets.QWidget):
             signal_connection.pic_signal.connect(self.set_pic)
             signal_connection.msg_signal.connect(self.show_msg)
             signal_connection.model_ready_signal.connect(self.after_model_ready)
-            self.signal_selected_file.connect(signal_connection.selected_filename)
+            signal_connection.total_frame_num.connect(self.set_frame_total_num)
+            self.frame_num_slider.valueChanged.connect(signal_connection.frame_num_changed)
             self.signal_for_finish_one_frame.connect(signal_connection.finish_one_frame_signal)
 
         # 子窗口
@@ -72,7 +79,7 @@ class MainWin(QtWidgets.QWidget):
                 if selected_filename.split('.')[-1].lower() not in self.settings.supported_formats:
                     self._show_msg('不支持的文件格式')
                     continue
-                self.signal_selected_file.emit(selected_filename)
+                self.settings.filename = selected_filename
                 break
             else:
                 sys.exit(0)
@@ -81,6 +88,10 @@ class MainWin(QtWidgets.QWidget):
         self.start_pause_button.setEnabled(False)
         self.signal_for_switch_paint.emit()
         self.signal_for_switch_record_mouse_pos.emit()
+
+    @Slot(int)
+    def set_frame_total_num(self, total_num: int):
+        self.frame_num_slider.setRange(0, total_num-1)
 
     @Slot()
     def setting_tracking_object(self):
@@ -110,6 +121,8 @@ class MainWin(QtWidgets.QWidget):
         self.settings.model_color_dict = self.new_win.get_all_data()
         self.new_win = None
         self.start_pause_button.setText('模型载入中')
+        self.settings.cur_tracking_object_frame_num = -1
+        self.frame_num_slider.setEnabled(False)
 
     @Slot()
     def after_model_ready(self):
@@ -161,11 +174,12 @@ class MainWin(QtWidgets.QWidget):
         while time() - self.last_set_frame_time < 0.03:
             sleep(0.01)
         self.last_set_frame_time = time()
-        image, rect_list, _ = frame
+        image, rect_list, cur_frame_num = frame
         h, w, ch = image.shape
         self.image_win.setFixedSize(w, h)
         self.image_win.setPixmap(QPixmap.fromImage(QImage(image, w, h, ch * w, QImage.Format_RGB888)))
         self.signal_for_rect.emit(rect_list)
+        self.frame_num_slider.setValue(cur_frame_num)
         self.repaint()
         self.signal_for_finish_one_frame.emit()
 

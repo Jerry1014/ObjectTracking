@@ -2,17 +2,18 @@
 界面与模型控制之间的中间件
 """
 from queue import Empty
-from time import time, sleep
+from time import sleep
 
 from PySide2.QtCore import QObject, Signal, QRunnable, Slot
 
 
 class InterfaceSignalConnection(QObject):
     msg_signal = Signal(str)
-    selected_filename = Slot(str)
+    frame_num_changed = Slot(int)
     pic_signal = Signal(list)
     finish_one_frame_signal = Slot()
     model_ready_signal = Signal()
+    total_frame_num = Signal(int)
 
 
 class InterfaceController(QRunnable):
@@ -22,7 +23,7 @@ class InterfaceController(QRunnable):
         """
         super().__init__()
         self.signal_connection = InterfaceSignalConnection()
-        self.signal_connection.selected_filename = self.after_selected_file
+        self.signal_connection.frame_num_changed = self.after_change_frame_num
         self.signal_connection.finish_one_frame_signal = self.after_finish_one_frame
         self.settings = settings
         self.frame_queue = self.settings.frame_queue
@@ -31,12 +32,20 @@ class InterfaceController(QRunnable):
 
     def run(self):
         while not self.settings.filename:
-            pass
+            sleep(0.5)
+        while self.settings.total_frame_num is None:
+            sleep(0.5)
+        self.signal_connection.total_frame_num.emit(self.settings.total_frame_num)
+
         # 第一帧
-        frame = self.frame_queue.get()
-        self.emit_pic(frame)
-        self.settings.first_frame = frame[0]
         self.settings.if_pause = True
+        while self.settings.cur_tracking_object_frame_num >= 0:
+            try:
+                frame = self.frame_queue.get(timeout=0.5)
+                self.settings.first_frame = frame[0]
+                self.emit_pic(frame)
+            except Empty:
+                pass
 
         # 当模型准备好后发送信号
         while self.frame_queue.qsize() == 0:
@@ -61,9 +70,9 @@ class InterfaceController(QRunnable):
         except RuntimeError:
             pass
 
-    @Slot()
-    def after_selected_file(self, filename: str):
-        self.settings.filename = filename
+    @Slot(int)
+    def after_change_frame_num(self, frame_num: int):
+        self.settings.cur_tracking_object_frame_num = frame_num
 
     @Slot()
     def after_finish_one_frame(self):

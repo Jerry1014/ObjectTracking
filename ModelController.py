@@ -34,8 +34,16 @@ class ModelController(QRunnable):
         # 读取第一帧
         self.video_reader.init(self.settings.filename)
         self.settings.total_frame_num = int(self.video_reader.get_frame_total_num())
-        frame = self.video_reader.get_one_frame()
-        self.frame_queue.put((frame, list(), 0))
+        last_tracking_object_frame_num = -1
+        start_frame_num = 0
+        while self.settings.cur_tracking_object_frame_num >= 0:
+            start_frame_num = self.settings.cur_tracking_object_frame_num
+            if last_tracking_object_frame_num != self.settings.cur_tracking_object_frame_num:
+                frame = self.video_reader.get_one_frame(self.settings.cur_tracking_object_frame_num)
+                self.frame_queue.put((frame[0], list(), frame[1]))
+                last_tracking_object_frame_num = self.settings.cur_tracking_object_frame_num
+            else:
+                sleep(0.5)
 
         # 准备ground true
         cf = ConfigParser()
@@ -49,6 +57,11 @@ class ModelController(QRunnable):
             self.if_have_gt = True
         except IndexError:
             pass
+
+        # 使gt和当前的帧匹配
+        while start_frame_num > 0:
+            next(self.gt_iterator)
+            start_frame_num -= 1
 
         # 等待用户选择模型
         while self.settings.model_color_dict is None:
@@ -76,7 +89,6 @@ class ModelController(QRunnable):
             except (ModuleNotFoundError, AttributeError) as e:
                 print(f'反射失败 反射模块{i} 模块路径{path} 反射类{i} 失败原因{e}')
 
-        test = 0
         while True:
             try:
                 frame = self.video_reader.get_one_frame()
@@ -90,8 +102,8 @@ class ModelController(QRunnable):
                 # 取gt
                 if self.if_have_gt:
                     result_rect_list.append((next(self.gt_iterator), 'green'))
-                test += 1
-                self.frame_queue.put((frame, result_rect_list, test))
+                start_frame_num += 1
+                self.frame_queue.put((frame[0], result_rect_list, frame[1]))
             except EndOfVideoError:
                 self.settings.if_end = True
                 self.exit_event.set()

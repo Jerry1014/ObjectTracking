@@ -23,6 +23,7 @@ class Settings:
         self.if_pause = True
         self.filename = None
         self.total_frame_num = None
+        self.cur_tracking_object_frame_num = 0
         self.frame_queue = Queue(maxsize=self.frame_queue_max_num)
         self.first_frame: ndarray = None
         self.tracking_object_rect = None

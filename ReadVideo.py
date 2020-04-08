@@ -77,7 +77,7 @@ class ReadVideoFromFile(ReadVideoBase):
                 self.video_capture.set(CAP_PROP_POS_FRAMES, frame_num)
             ret, frame = self.video_capture.read()
             if ret:
-                return cvtColor(frame, COLOR_BGR2RGB)
+                return cvtColor(frame, COLOR_BGR2RGB), self.video_capture.get(CAP_PROP_POS_FRAMES) - 1
             else:
                 # 此处释放逻辑对于视频可行，对于摄像头则有错
                 self.release_init()
