@@ -11,14 +11,14 @@ from time import sleep
 from PySide2.QtCore import QRunnable
 
 from GroundTrue.GroundTrueParser1 import GroundTrueParser1
-from ReadVideo import EndOfVideoError
+from ReadVideo import EndOfVideoError, ReadVideoBase
 
 
 class ModelController(QRunnable):
     def __init__(self, settings):
         super().__init__()
         self.settings = settings
-        self.video_reader = self.settings.file_reader
+        self.video_reader: ReadVideoBase = self.settings.file_reader
         self.frame_queue = self.settings.frame_queue
         self.model_input_queue_list = list()
         self.model_output_queue_list = list()
@@ -33,6 +33,7 @@ class ModelController(QRunnable):
 
         # 读取第一帧
         self.video_reader.init(self.settings.filename)
+        self.settings.total_frame_num = int(self.video_reader.get_frame_total_num())
         frame = self.video_reader.get_one_frame()
         self.frame_queue.put((frame, list(), 0))
 

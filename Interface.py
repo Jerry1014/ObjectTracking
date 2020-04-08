@@ -49,7 +49,6 @@ class MainWin(QtWidgets.QWidget):
             signal_connection.model_ready_signal.connect(self.after_model_ready)
             self.signal_selected_file.connect(signal_connection.selected_filename)
             self.signal_for_finish_one_frame.connect(signal_connection.finish_one_frame_signal)
-        self.set_filename()
 
         # 子窗口
         self.new_win = None
@@ -57,6 +56,8 @@ class MainWin(QtWidgets.QWidget):
         # 其他
         self.last_set_frame_time = time()
         self.if_all_model_ready = False
+
+        self.set_filename()
 
     def set_filename(self):
         """
