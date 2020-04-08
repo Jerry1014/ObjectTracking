@@ -6,7 +6,7 @@ from os import walk
 from os.path import exists, sep
 from queue import Queue
 
-from cv2.cv2 import imread, cvtColor, COLOR_BGR2RGB
+from cv2.cv2 import imread, cvtColor, COLOR_BGR2RGB, VideoCapture, CAP_PROP_POS_FRAMES, CAP_PROP_FRAME_COUNT
 
 
 class OpenVideoError(Exception):
@@ -30,9 +30,16 @@ class ReadVideoBase:
         """
         raise NotImplementedError()
 
-    def get_one_frame(self):
+    def get_one_frame(self, frame_num=-1):
         """
         获取一帧的图像
+        :param frame_num: -1 读取下一帧 >=0 读取frame_num帧
+        """
+        raise NotImplementedError()
+
+    def get_frame_total_num(self):
+        """
+        获取总帧数
         """
         raise NotImplementedError()
 
@@ -43,14 +50,13 @@ class ReadVideoFromFile(ReadVideoBase):
     """
 
     def __init__(self):
-        self.video_capture = None
+        self.video_capture: VideoCapture = None
 
     def init(self, video_filename):
         """
         视频容器初始化
         :param video_filename: 视频文件名称。可为空，后续通过open_video方法打开视频文件
         """
-        from cv2.cv2 import VideoCapture
         self.video_capture = VideoCapture(video_filename)
 
     def is_open(self):
@@ -60,13 +66,15 @@ class ReadVideoFromFile(ReadVideoBase):
         """
         return self.video_capture.isOpened()
 
-    def get_one_frame(self):
+    def get_one_frame(self, frame_num=-1):
         """
         获取视频的一帧
         :return:视频帧
         :raise: EndOfVideo(Exception)视频结束
         """
         if self.is_open():
+            if frame_num > 0:
+                self.video_capture.set(CAP_PROP_POS_FRAMES, frame_num)
             ret, frame = self.video_capture.read()
             if ret:
                 return cvtColor(frame, COLOR_BGR2RGB)
@@ -75,7 +83,6 @@ class ReadVideoFromFile(ReadVideoBase):
                 self.release_init()
                 raise EndOfVideoError()
         else:
-            # fixme 暂且如此
             raise EndOfVideoError()
 
     def release_init(self):
@@ -84,25 +91,36 @@ class ReadVideoFromFile(ReadVideoBase):
         """
         self.video_capture.release()
 
+    def get_frame_total_num(self):
+        if self.video_capture:
+            return self.video_capture.get(CAP_PROP_FRAME_COUNT)
+
 
 class ReadPicFromDir(ReadVideoBase):
     support_format = ('jpg',)
 
     def __init__(self):
-        self.pic_queue = Queue()
+        self.pic_list = list()
+        self.cur_index = -1
 
     def init(self, file_or_dir):
         if not exists(file_or_dir):
             raise OpenVideoError()
 
-        self.pic_queue = Queue()
         _, _, file_list = next(walk(file_or_dir))
         for filename in file_list:
             if filename.split('.')[-1] in self.support_format:
-                self.pic_queue.put(imread(file_or_dir + sep + filename))
+                self.pic_list.append(imread(file_or_dir + sep + filename))
 
-    def get_one_frame(self):
-        if self.pic_queue.qsize() > 0:
-            return self.pic_queue.get()
+    def get_one_frame(self, frame_num=-1):
+        if frame_num < 0:
+            if self.cur_index < len(self.pic_list):
+                self.cur_index += 1
+                return self.pic_list[self.cur_index]
+            else:
+                raise EndOfVideoError()
         else:
-            raise EndOfVideoError()
+            return self.pic_list[frame_num] if frame_num < len(self.pic_list) else None
+
+    def get_frame_total_num(self):
+        return len(self.pic_list)
