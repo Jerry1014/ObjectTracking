@@ -13,7 +13,6 @@ class Settings:
     def __init__(self):
         # 设置项
         self.init_fix_rect = None
-        # fixme 后缀名大小写
         self.supported_formats = ('mp4', 'mkv', 'avi', 'mpg')
         self.frame_queue_max_num = 10
         self.model_color_dict = None
@@ -29,8 +28,6 @@ class Settings:
 
     def get_image_from_first_frame_by_rect(self, rect):
         rect = [int(i) for i in rect]
-        # # fixme 图片y轴存在偏移，暂通过临时加解决
-        # rect[1] = rect[1] + 38
         return self.first_frame[rect[1]:rect[1] + rect[3], rect[0]:rect[0] + rect[2]].copy(order='C')
 
     def get_model_color(self, model_class):
