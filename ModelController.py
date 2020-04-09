@@ -58,7 +58,7 @@ class ModelController(QRunnable):
             if last_tracking_object_frame_num != self.settings.cur_tracking_object_frame_num:
                 frame = self.video_reader.get_one_frame(self.settings.cur_tracking_object_frame_num)
                 gt_rect = ((self.gt_list[cur_frame_num], 'green'),) if self.settings.if_have_gt else ()
-                self.frame_queue.put((frame, gt_rect))
+                self.frame_queue.put((frame, gt_rect, None))
                 last_tracking_object_frame_num = self.settings.cur_tracking_object_frame_num
             else:
                 sleep(0.5)

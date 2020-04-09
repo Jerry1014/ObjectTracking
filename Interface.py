@@ -174,7 +174,7 @@ class MainWin(QtWidgets.QWidget):
         while time() - self.last_set_frame_time < 0.03:
             sleep(0.01)
         self.last_set_frame_time = time()
-        image_and_frame_num, rect_list = frame
+        image_and_frame_num, rect_list, benckmark = frame
         image, cur_frame_num = image_and_frame_num
         h, w, ch = image.shape
         self.image_win.setFixedSize(w, h)
@@ -183,6 +183,7 @@ class MainWin(QtWidgets.QWidget):
         self.frame_num_slider.setValue(cur_frame_num)
         self.repaint()
         self.signal_for_finish_one_frame.emit()
+        print(benckmark)
 
 
 class MyImageLabel(QtWidgets.QLabel):
