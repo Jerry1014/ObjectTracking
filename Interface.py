@@ -157,6 +157,7 @@ class MainWin(QtWidgets.QWidget):
 
     def _show_msg(self, msg, if_cancel=None, if_image=None, image=None):
         msg_box = QtWidgets.QMessageBox()
+        msg_box.setWindowTitle('提示')
         msg_box.setText(msg)
         msg_box.addButton(QtWidgets.QMessageBox.Ok)
         if if_cancel:
