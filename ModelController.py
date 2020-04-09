@@ -104,7 +104,7 @@ class ModelController(QRunnable):
                 if self.settings.if_have_gt:
                     gt = self.gt_list[cur_frame_num]
                     cur_frame_num += 1
-                    benckmart_list = tuple(i.send((j[0], gt)) for j in result_rect_list for i in self.benckmart_list)
+                    benckmart_list = tuple(tuple((i.send((j[0], gt)),j[1]) for j in result_rect_list) for i in self.benckmart_list)
                     result_rect_list.append((gt, 'green'))
 
                 self.frame_queue.put((frame, result_rect_list, benckmart_list))
