@@ -20,7 +20,7 @@ class MainWin(QtWidgets.QWidget):
     signal_for_close_new_win = Signal()
     signal_for_finish_one_frame = Signal()
 
-    def __init__(self, settings, signal_connection:InterfaceSignalConnection):
+    def __init__(self, settings, signal_connection: InterfaceSignalConnection):
         """
         :param settings: 设置类
         :param signal_connection: 用来连接的外部信号，未做信号存在及未来升级的设计优化
@@ -91,7 +91,7 @@ class MainWin(QtWidgets.QWidget):
 
     @Slot(int)
     def set_frame_total_num(self, total_num: int):
-        self.frame_num_slider.setRange(0, total_num-1)
+        self.frame_num_slider.setRange(0, total_num - 1)
 
     @Slot()
     def setting_tracking_object(self):
@@ -174,7 +174,8 @@ class MainWin(QtWidgets.QWidget):
         while time() - self.last_set_frame_time < 0.03:
             sleep(0.01)
         self.last_set_frame_time = time()
-        image, rect_list, cur_frame_num = frame
+        image_and_frame_num, rect_list = frame
+        image, cur_frame_num = image_and_frame_num
         h, w, ch = image.shape
         self.image_win.setFixedSize(w, h)
         self.image_win.setPixmap(QPixmap.fromImage(QImage(image, w, h, ch * w, QImage.Format_RGB888)))

@@ -41,9 +41,9 @@ class InterfaceController(QRunnable):
         self.settings.if_pause = True
         while self.settings.cur_tracking_object_frame_num >= 0:
             try:
-                frame = self.frame_queue.get(timeout=0.5)
-                self.settings.first_frame = frame[0]
-                self.emit_pic(frame)
+                frame_and_result_rect = self.frame_queue.get(timeout=0.5)
+                self.settings.first_frame = frame_and_result_rect[0][0]
+                self.emit_pic(frame_and_result_rect)
             except Empty:
                 pass
 
@@ -55,12 +55,12 @@ class InterfaceController(QRunnable):
         # 后续帧发送
         while not (self.settings.if_end and self.frame_queue.qsize() == 0):
             try:
-                frame = self.frame_queue.get(timeout=1)
+                frame_and_result_rect = self.frame_queue.get(timeout=1)
             except Empty:
                 continue
             while self.settings.if_pause:
                 sleep(0.5)
-            self.emit_pic(frame)
+            self.emit_pic(frame_and_result_rect)
             self.controller_cur_frame_num += 1
             while self.controller_cur_frame_num - self.interface_cur_frame_num > 1:
                 sleep(0.05)

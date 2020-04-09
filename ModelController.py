@@ -40,7 +40,7 @@ class ModelController(QRunnable):
             start_frame_num = self.settings.cur_tracking_object_frame_num
             if last_tracking_object_frame_num != self.settings.cur_tracking_object_frame_num:
                 frame = self.video_reader.get_one_frame(self.settings.cur_tracking_object_frame_num)
-                self.frame_queue.put((frame[0], list(), frame[1]))
+                self.frame_queue.put((frame, list()))
                 last_tracking_object_frame_num = self.settings.cur_tracking_object_frame_num
             else:
                 sleep(0.5)
@@ -95,7 +95,7 @@ class ModelController(QRunnable):
                 result_rect_list = list()
                 # 将当前帧输入到模型输入队列
                 for i in self.model_input_queue_list:
-                    i.put(frame)
+                    i.put(frame[0])
                 # 取回模型结果
                 for i in self.model_output_queue_list:
                     result_rect_list.append(i.get())
@@ -103,7 +103,7 @@ class ModelController(QRunnable):
                 if self.if_have_gt:
                     result_rect_list.append((next(self.gt_iterator), 'green'))
                 start_frame_num += 1
-                self.frame_queue.put((frame[0], result_rect_list, frame[1]))
+                self.frame_queue.put((frame, result_rect_list))
             except EndOfVideoError:
                 self.settings.if_end = True
                 self.exit_event.set()
