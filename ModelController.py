@@ -99,7 +99,7 @@ class ModelController(QRunnable):
                 if self.if_have_gt:
                     result_rect_list.append((self.gt_list[start_frame_num], 'green'))
                     start_frame_num += 1
-                    self.frame_queue.put((frame, result_rect_list))
+                self.frame_queue.put((frame, result_rect_list))
             except EndOfVideoError:
                 self.settings.if_end = True
                 self.exit_event.set()

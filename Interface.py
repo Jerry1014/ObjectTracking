@@ -6,7 +6,6 @@ from time import time, sleep
 from PySide2 import QtWidgets
 from PySide2.QtCore import Slot, Signal, QRect, Qt
 from PySide2.QtGui import QPixmap, QImage, QMouseEvent, QPaintEvent, QPainter, QCloseEvent
-from PySide2.QtWidgets import QSlider
 
 from InterfaceController import InterfaceSignalConnection
 
@@ -37,7 +36,7 @@ class MainWin(QtWidgets.QWidget):
         self.image_win = MyImageLabel(self.signal_for_switch_record_mouse_pos, self.signal_for_switch_paint,
                                       self.signal_for_rect, self.signal_after_setting_tracking_object)
         self.start_pause_button = QtWidgets.QPushButton('载入视频')
-        self.frame_num_slider = QSlider(Qt.Horizontal)
+        self.frame_num_slider = QtWidgets.QSlider(Qt.Horizontal)
         self.frame_num_slider.setValue(0)
 
         # 布局
