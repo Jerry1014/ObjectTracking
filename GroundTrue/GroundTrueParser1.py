@@ -3,9 +3,6 @@ from GroundTrue.GroundTrueParserBase import GroundTrueParserBase
 
 class GroundTrueParser1(GroundTrueParserBase):
     @staticmethod
-    def get_result_iterator(ground_true_filename):
+    def get_result_list(ground_true_filename):
         with open(ground_true_filename) as f:
-            a_line = f.readline()
-            while a_line:
-                yield (int(i) for i in a_line.split())
-                a_line = f.readline()
+            return tuple(tuple(int(j) for j in i.split()) for i in f.readlines())

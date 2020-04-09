@@ -25,11 +25,24 @@ class ModelController(QRunnable):
         self.exit_event = Event()
         self.exit_event.clear()
         self.if_have_gt = False
-        self.gt_iterator = None
+        self.gt_list = None
 
     def run(self):
         while not self.settings.filename:
             sleep(0.5)
+
+        # 准备ground true
+        cf = ConfigParser()
+        dataset_dir = dirname(self.settings.filename) + sep
+        cf.read(dataset_dir + 'config.ini')
+        try:
+            gt_parser_section = cf[cf.sections()[0]]
+            gt_filename = gt_parser_section['ground_true_filename']
+            self.gt_list = GroundTrueParser1().get_result_list(dataset_dir + gt_filename) \
+                if gt_parser_section['parser'] == '0' else None
+            self.if_have_gt = True
+        except IndexError:
+            pass
 
         # 读取第一帧
         self.video_reader.init(self.settings.filename)
@@ -40,28 +53,11 @@ class ModelController(QRunnable):
             start_frame_num = self.settings.cur_tracking_object_frame_num
             if last_tracking_object_frame_num != self.settings.cur_tracking_object_frame_num:
                 frame = self.video_reader.get_one_frame(self.settings.cur_tracking_object_frame_num)
-                self.frame_queue.put((frame, list()))
+                gt_rect = ((self.gt_list[start_frame_num], 'green'),) if self.if_have_gt else ()
+                self.frame_queue.put((frame, gt_rect))
                 last_tracking_object_frame_num = self.settings.cur_tracking_object_frame_num
             else:
                 sleep(0.5)
-
-        # 准备ground true
-        cf = ConfigParser()
-        dataset_dir = dirname(self.settings.filename) + sep
-        cf.read(dataset_dir + 'config.ini')
-        try:
-            gt_parser_section = cf[cf.sections()[0]]
-            gt_filename = gt_parser_section['ground_true_filename']
-            self.gt_iterator = GroundTrueParser1().get_result_iterator(dataset_dir + gt_filename) \
-                if gt_parser_section['parser'] == '0' else None
-            self.if_have_gt = True
-        except IndexError:
-            pass
-
-        # 使gt和当前的帧匹配
-        while start_frame_num > 0:
-            next(self.gt_iterator)
-            start_frame_num -= 1
 
         # 等待用户选择模型
         while self.settings.model_color_dict is None:
@@ -101,9 +97,9 @@ class ModelController(QRunnable):
                     result_rect_list.append(i.get())
                 # 取gt
                 if self.if_have_gt:
-                    result_rect_list.append((next(self.gt_iterator), 'green'))
-                start_frame_num += 1
-                self.frame_queue.put((frame, result_rect_list))
+                    result_rect_list.append((self.gt_list[start_frame_num], 'green'))
+                    start_frame_num += 1
+                    self.frame_queue.put((frame, result_rect_list))
             except EndOfVideoError:
                 self.settings.if_end = True
                 self.exit_event.set()
