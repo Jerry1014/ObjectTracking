@@ -4,8 +4,9 @@ from configparser import ConfigParser
 from time import time, sleep
 
 from PySide2 import QtWidgets
+from PySide2.QtCharts import QtCharts
 from PySide2.QtCore import Slot, Signal, QRect, Qt
-from PySide2.QtGui import QPixmap, QImage, QMouseEvent, QPaintEvent, QPainter, QCloseEvent
+from PySide2.QtGui import QPixmap, QImage, QMouseEvent, QPaintEvent, QPainter, QCloseEvent,QPen
 
 from InterfaceController import InterfaceSignalConnection
 
@@ -62,6 +63,8 @@ class MainWin(QtWidgets.QWidget):
         # 其他
         self.last_set_frame_time = time()
         self.if_all_model_ready = False
+        self.benckmart_list = None
+        self.benckmart_color_series_set = dict()
 
         self.set_filename()
 
@@ -169,7 +172,7 @@ class MainWin(QtWidgets.QWidget):
     def set_pic(self, frame):
         """
         显示图片
-        :param image: 一定要是ndarray，RGB888格式
+        :param frame: (视频帧，模型结果列表，模型评价列表)
         """
         while time() - self.last_set_frame_time < 0.03:
             sleep(0.01)
@@ -181,9 +184,42 @@ class MainWin(QtWidgets.QWidget):
         self.image_win.setPixmap(QPixmap.fromImage(QImage(image, w, h, ch * w, QImage.Format_RGB888)))
         self.signal_for_rect.emit(rect_list)
         self.frame_num_slider.setValue(cur_frame_num)
+        self.set_benckmark(cur_frame_num,benckmark)
+        print(benckmark)
         self.repaint()
         self.signal_for_finish_one_frame.emit()
-        print(benckmark)
+
+    def set_benckmark(self, x,benckmark_list):
+        if benckmark_list:
+            # 初始化
+            if self.benckmart_list is None:
+                self.benckmart_list = list()
+                for benckmart in benckmark_list:
+                    new_widget = QtCharts.QChartView()
+                    width = self.size().toTuple()[0]
+                    new_widget.setFixedSize(width,width/2)
+                    self.layout.addWidget(new_widget)
+                    color_data_series = dict()
+                    self.benckmart_list.append((new_widget,color_data_series))
+                    for model_result in benckmart:
+                        new_data_series = QtCharts.QSplineSeries()
+                        new_data_series.setPen(QPen(model_result[1]))
+                        new_widget.chart().addSeries(new_data_series)
+                        color_data_series[model_result[1]] = new_data_series
+                self.setLayout(self.layout)
+                self.repaint()
+
+            # 添加点
+            for benckmart,chart_view_and_data_series_set in zip(benckmark_list,self.benckmart_list):
+                chart_view, data_series_set = chart_view_and_data_series_set
+                for model_result in benckmart:
+                    data_series_set[model_result[1]].append(x,model_result[0])
+                    chart_view.chart().removeSeries(data_series_set[model_result[1]])
+                    chart_view.chart().addSeries(data_series_set[model_result[1]])
+                chart_view.chart().createDefaultAxes()
+
+
+
 
 
 class MyImageLabel(QtWidgets.QLabel):
