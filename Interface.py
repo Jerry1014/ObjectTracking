@@ -197,10 +197,11 @@ class MainWin(QtWidgets.QWidget):
                     new_widget = QtCharts.QChartView()
                     width = self.size().toTuple()[0]
                     new_widget.setFixedSize(width, width / 2)
+                    new_widget.chart().setTitle(benckmart[0])
                     self.layout.addWidget(new_widget)
                     color_data_series = dict()
                     self.benckmart_list.append((new_widget, color_data_series))
-                    for model_result in benckmart:
+                    for model_result in benckmart[1:]:
                         new_data_series = QtCharts.QSplineSeries()
                         new_data_series.setPen(QPen(model_result[1]))
                         new_widget.chart().addSeries(new_data_series)
@@ -211,7 +212,7 @@ class MainWin(QtWidgets.QWidget):
             # 添加点
             for benckmart, chart_view_and_data_series_set in zip(benckmark_list, self.benckmart_list):
                 chart_view, data_series_set = chart_view_and_data_series_set
-                for model_result in benckmart:
+                for model_result in benckmart[1:]:
                     data_series_set[model_result[1]].append(x, model_result[0])
                     chart_view.chart().removeSeries(data_series_set[model_result[1]])
                     chart_view.chart().addSeries(data_series_set[model_result[1]])

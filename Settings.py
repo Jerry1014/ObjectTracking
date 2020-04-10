@@ -16,7 +16,7 @@ class Settings:
         # 设置项
         self.init_fix_rect = None
         self.supported_formats = ('mp4', 'mkv', 'avi', 'mpg')
-        self.benckmart_list = [APE().get_iterator(), AOR().get_iterator()]
+        self.benckmart_list = [('APE', APE().get_iterator()), ('AOR', AOR().get_iterator())]
         self.frame_queue_max_num = 10
         self.model_color_dict = None
         self.file_reader = ReadVideoFromFile()
