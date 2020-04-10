@@ -11,6 +11,6 @@ class AOR(BenckmarkBase):
             end_x = min(gt_x + gt_w, result_x + result_w)
             start_y = max(gt_y, result_y)
             end_y = min(gt_y + gt_h, result_y + result_h)
-            radio = (start_x - end_x) * (start_y - end_y)
+            radio = (end_x - start_x) * (end_y - start_y) if end_x > start_x and end_y > start_y else 0
             all_radio = gt_w * gt_h + result_w * result_h
-            gt, result = yield radio / all_radio if radio > 0 else 0
+            gt, result = yield radio / (all_radio - radio)
