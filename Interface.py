@@ -6,7 +6,7 @@ from time import time, sleep
 from PySide2 import QtWidgets
 from PySide2.QtCharts import QtCharts
 from PySide2.QtCore import Slot, Signal, QRect, Qt
-from PySide2.QtGui import QPixmap, QImage, QMouseEvent, QPaintEvent, QPainter, QCloseEvent,QPen
+from PySide2.QtGui import QPixmap, QImage, QMouseEvent, QPaintEvent, QPainter, QCloseEvent, QPen
 
 from InterfaceController import InterfaceSignalConnection
 
@@ -184,12 +184,11 @@ class MainWin(QtWidgets.QWidget):
         self.image_win.setPixmap(QPixmap.fromImage(QImage(image, w, h, ch * w, QImage.Format_RGB888)))
         self.signal_for_rect.emit(rect_list)
         self.frame_num_slider.setValue(cur_frame_num)
-        self.set_benckmark(cur_frame_num,benckmark)
-        print(benckmark)
+        self.set_benckmark(cur_frame_num, benckmark)
         self.repaint()
         self.signal_for_finish_one_frame.emit()
 
-    def set_benckmark(self, x,benckmark_list):
+    def set_benckmark(self, x, benckmark_list):
         if benckmark_list:
             # 初始化
             if self.benckmart_list is None:
@@ -197,10 +196,10 @@ class MainWin(QtWidgets.QWidget):
                 for benckmart in benckmark_list:
                     new_widget = QtCharts.QChartView()
                     width = self.size().toTuple()[0]
-                    new_widget.setFixedSize(width,width/2)
+                    new_widget.setFixedSize(width, width / 2)
                     self.layout.addWidget(new_widget)
                     color_data_series = dict()
-                    self.benckmart_list.append((new_widget,color_data_series))
+                    self.benckmart_list.append((new_widget, color_data_series))
                     for model_result in benckmart:
                         new_data_series = QtCharts.QSplineSeries()
                         new_data_series.setPen(QPen(model_result[1]))
@@ -210,16 +209,13 @@ class MainWin(QtWidgets.QWidget):
                 self.repaint()
 
             # 添加点
-            for benckmart,chart_view_and_data_series_set in zip(benckmark_list,self.benckmart_list):
+            for benckmart, chart_view_and_data_series_set in zip(benckmark_list, self.benckmart_list):
                 chart_view, data_series_set = chart_view_and_data_series_set
                 for model_result in benckmart:
-                    data_series_set[model_result[1]].append(x,model_result[0])
+                    data_series_set[model_result[1]].append(x, model_result[0])
                     chart_view.chart().removeSeries(data_series_set[model_result[1]])
                     chart_view.chart().addSeries(data_series_set[model_result[1]])
                 chart_view.chart().createDefaultAxes()
-
-
-
 
 
 class MyImageLabel(QtWidgets.QLabel):
