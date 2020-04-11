@@ -205,7 +205,7 @@ class MainWin(QtWidgets.QWidget):
                         new_data_series = QtCharts.QSplineSeries()
                         new_data_series.setPen(QPen(model_result[1]))
                         new_widget.chart().addSeries(new_data_series)
-                        color_data_series[model_result[1]] = new_data_series
+                        color_data_series[model_result[1]] = [new_data_series, model_result[0]]
                 self.setLayout(self.layout)
                 self.repaint()
 
@@ -213,9 +213,13 @@ class MainWin(QtWidgets.QWidget):
             for benckmart, chart_view_and_data_series_set in zip(benckmark_list, self.benckmart_list):
                 chart_view, data_series_set = chart_view_and_data_series_set
                 for model_result in benckmart[1:]:
-                    data_series_set[model_result[1]].append(x, model_result[0])
-                    chart_view.chart().removeSeries(data_series_set[model_result[1]])
-                    chart_view.chart().addSeries(data_series_set[model_result[1]])
+                    data_series, avg = data_series_set[model_result[1]]
+                    data_series.append(x, model_result[0])
+                    avg = (avg + model_result[0]) / 2
+                    data_series_set[model_result[1]][1] = avg
+                    data_series.setName(str(avg))
+                    chart_view.chart().removeSeries(data_series)
+                    chart_view.chart().addSeries(data_series)
                 chart_view.chart().createDefaultAxes()
 
 
