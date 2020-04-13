@@ -2,6 +2,11 @@ from Model.Model import ModelBaseWithMultiProcess
 
 
 class TestModel(ModelBaseWithMultiProcess):
+    def _set_tracking_object(self):
+        tracking_object = self.input_queue.get()
+        self.first_frame = tracking_object[0]
+        self.tracking_object_rect = tracking_object[1]
+
     def __init__(self, input_queue, output_queue, rect_color, exit_event):
         super().__init__(input_queue, output_queue, rect_color, exit_event)
         self.x = 0

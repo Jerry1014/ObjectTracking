@@ -20,9 +20,7 @@ class ModelBaseWithMultiProcess(Process):
         """
         设置跟踪对象
         """
-        tracking_object = self.input_queue.get()
-        self.first_frame = tracking_object[0]
-        self.tracking_object_rect = tracking_object[1]
+        raise NotImplementedError()
 
     def get_tracking_result(self, cur_frame):
         """
