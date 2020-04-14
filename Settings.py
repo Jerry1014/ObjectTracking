@@ -32,6 +32,9 @@ class Settings:
         self.first_frame: ndarray = None
         self.tracking_object_rect = None
 
+        self.monitor_config_list = None
+        self.each_monitor_rect = (500, 500)
+
     def get_image_from_first_frame_by_rect(self, rect):
         rect = [int(i) for i in rect]
         return self.first_frame[rect[1]:rect[1] + rect[3], rect[0]:rect[0] + rect[2]].copy(order='C')
