@@ -4,9 +4,9 @@
 import sys
 
 from PySide2 import QtWidgets
-from PySide2.QtCore import QThreadPool, QProcess
+from PySide2.QtCore import QThreadPool
 
-from Interface import MainWin
+from Interface.Interface import MainWin
 from InterfaceController import InterfaceController
 from ModelController import ModelController
 from Settings import settings
