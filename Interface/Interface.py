@@ -108,7 +108,7 @@ class MainWin(QtWidgets.QWidget):
                           image=tracking_object_image_pixmap) == QtWidgets.QMessageBox.Ok:
             self.start_pause_button.setText('选择模型')
             cf = ConfigParser()
-            cf.read('./Model/config.ini')
+            cf.read('./Model/ModelConfig.ini')
             model_choose_win = ModelSelectWin(cf.sections(), self.signal_for_close_new_win)
             self.signal_for_close_new_win.connect(self.after_choose_model)
             model_choose_win.show()

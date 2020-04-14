@@ -34,7 +34,7 @@ class ModelController(QRunnable):
         # 准备ground true
         cf = ConfigParser()
         dataset_dir = dirname(self.settings.filename) + sep
-        cf.read(dataset_dir + 'config.ini')
+        cf.read(dataset_dir + 'GTConfig.ini')
         try:
             gt_parser_section = cf[cf.sections()[0]]
             gt_filename = gt_parser_section['ground_true_filename']
@@ -68,7 +68,7 @@ class ModelController(QRunnable):
             sleep(0.5)
 
         cf = ConfigParser()
-        cf.read('./Model/config.ini')
+        cf.read('./Model/ModelConfig.ini')
         for i in self.settings.model_color_dict.keys():
             path = cf[i]['path']
             if path not in sys.path:
