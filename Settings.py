@@ -22,7 +22,7 @@ class Settings:
         self.file_reader = ReadVideoFromFile()
 
         # 在组件中传递的标记
-        self.if_end = None
+        self.if_end = False
         self.if_pause = True
         self.if_have_gt = False
         self.filename = None
@@ -33,7 +33,9 @@ class Settings:
         self.tracking_object_rect = None
 
         self.monitor_config_list = None
+        self.monitor_play_state = list()
         self.each_monitor_rect = (500, 500)
+        self.frame_update_signal = None
 
     def get_image_from_first_frame_by_rect(self, rect):
         rect = [int(i) for i in rect]
@@ -44,4 +46,3 @@ class Settings:
 
 
 settings = Settings()
-"json:{}"
