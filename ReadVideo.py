@@ -6,7 +6,8 @@ from os import walk
 from os.path import exists, sep
 from queue import Queue
 
-from cv2.cv2 import imread, cvtColor, COLOR_BGR2RGB, VideoCapture, CAP_PROP_POS_FRAMES, CAP_PROP_FRAME_COUNT
+from cv2.cv2 import imread, cvtColor, COLOR_BGR2RGB, VideoCapture, CAP_PROP_POS_FRAMES, CAP_PROP_FRAME_COUNT, \
+    CAP_PROP_FRAME_HEIGHT, CAP_PROP_FRAME_WIDTH
 
 
 class OpenVideoError(Exception):
@@ -43,11 +44,21 @@ class ReadVideoBase:
         """
         raise NotImplementedError()
 
+    def get_frame_shape(self):
+        """
+        获取帧的h w
+        """
+        raise NotImplementedError()
+
 
 class ReadVideoFromFile(ReadVideoBase):
     """
     从文件中逐帧读取
     """
+
+    def get_frame_shape(self):
+        if self.video_capture and self.video_capture.isOpened():
+            return self.video_capture.get(CAP_PROP_FRAME_WIDTH), self.video_capture.get(CAP_PROP_FRAME_HEIGHT)
 
     def __init__(self):
         self.video_capture: VideoCapture = None
@@ -98,6 +109,11 @@ class ReadVideoFromFile(ReadVideoBase):
 
 class ReadPicFromDir(ReadVideoBase):
     support_format = ('jpg',)
+
+    def get_frame_shape(self):
+        if self.pic_list:
+            h, w, ch = self.pic_list[0].shape
+            return w, h
 
     def __init__(self):
         self.pic_list = list()
