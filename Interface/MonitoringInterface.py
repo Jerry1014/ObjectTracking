@@ -50,7 +50,7 @@ class MonitoringInterface(QtWidgets.QWidget):
 
     @Slot(FrameData)
     def set_frame(self, frame_data):
-        self.monitor_list[frame_data.index].set_frame(frame_data.frame)
+        self.monitor_list[frame_data.index].set_frame(frame_data)
 
     @Slot(int)
     def change_play_state(self, index):
@@ -66,7 +66,8 @@ class MonitoringInterface(QtWidgets.QWidget):
         for i in range(len(self.play_state)):
             self.play_state[i] = False
         self.sub_win = TrackingWin(index, self.settings, self.model_init_signal, self.change_play_process,
-                                   self.after_close_tracking, frame_pixmap, slider_value, slider_max_num)
+                                   self.after_close_tracking, self.change_play_state, frame_pixmap, slider_value,
+                                   slider_max_num)
         self.sub_win.show()
         self.sub_win.activateWindow()
         self.tem_index_monitor = (index, self.monitor_list[index])
@@ -116,13 +117,13 @@ class MonitoringSubInterface(QtWidgets.QWidget):
         self.track_button.clicked.connect(self.track_button_event)
         self.start_tracking_signal.connect(start_tracking_slot)
 
-    def set_frame(self, frame):
-        frame, cur_frame_num = frame
-        if type(frame) == str:
-            self.monitor_win.setText(frame)
+    def set_frame(self, frame_data):
+        frame_data, cur_frame_num = frame_data.frame
+        if type(frame_data) == str:
+            self.monitor_win.setText(frame_data)
         else:
-            h, w, ch = frame.shape
-            tem_pixmap = QPixmap.fromImage(QImage(frame, w, h, ch * w, QImage.Format_RGB888))
+            h, w, ch = frame_data.shape
+            tem_pixmap = QPixmap.fromImage(QImage(frame_data, w, h, ch * w, QImage.Format_RGB888))
             tem_pixmap.scaled(self.monitor_win.size())
             self.monitor_win.setPixmap(tem_pixmap)
             self.slider.blockSignals(True)

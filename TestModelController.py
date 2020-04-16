@@ -1,8 +1,12 @@
 """
 承接界面和模型的中间模块，负责总体调度
 """
+import sys
 from configparser import ConfigParser
+from multiprocessing import Event
+from os import getcwd
 from os.path import sep
+from queue import Queue
 from time import sleep, time
 
 from PySide2.QtCore import Slot, QRunnable
@@ -18,7 +22,9 @@ class TestModelController(QRunnable):
         self.video_reader_list = list()
         self.emit_frame_signal = None
         self.if_model = False
-        self.model_list = list()
+        self.model_input_queue_list = list()
+        self.model_output_queue_list = list()
+        self.exit_event = Event()
 
     def run(self):
         # 载入视频与gt
@@ -70,15 +76,45 @@ class TestModelController(QRunnable):
                             self.settings.monitor_play_state[index] = False
                     except EndOfVideoError:
                         frame = ('视频已结束', None)
-                    # todo model_rect gt
+                    result_rect_list = list()
+                    if self.if_model:
+                        # 将当前帧输入到模型输入队列
+                        for i in self.model_input_queue_list:
+                            i.put(frame[0])
+                        # 取回模型结果
+                        for i in self.model_output_queue_list:
+                            result_rect_list.append(i.get())
+                    # todo model_rect
 
                     while time() - last_emit_frame_time[index] < 0.03:
                         sleep(0.01)
-                    new_frame_config = FrameData(index, frame, None, None)
+                    new_frame_config = FrameData(index, frame, result_rect_list, None)
                     self.emit_frame_signal.emit(new_frame_config)
                     last_emit_frame_time[index] = time()
             last_emit_frame_time[-1] = time()
+        self.exit_event.set()
 
     @Slot(dict)
     def init_object_tracking_model(self, model_name_list):
-        print(model_name_list)
+        cf = ConfigParser()
+        cf.read('./Model/ModelConfig.ini')
+        for i in model_name_list.keys():
+            path = cf[i]['path']
+            if path not in sys.path:
+                path = sep.join([getcwd(), 'Model'] + path.split(' '))
+                sys.path.append(path)
+            try:
+                m = __import__(i)
+                tem_input_queue = Queue()
+                tem_output_queue = Queue()
+                self.model_input_queue_list.append(tem_input_queue)
+                self.model_output_queue_list.append(tem_output_queue)
+                tem_input_queue.put((self.settings.first_frame, self.settings.tracking_object_rect))
+
+                model_class = getattr(m, i)
+                model_color = model_name_list[model_class.__name__]
+                model = model_class(tem_input_queue, tem_output_queue, model_color, self.exit_event)
+                model.start()
+            except (ModuleNotFoundError, AttributeError) as e:
+                print(f'反射失败 反射模块{i} 模块路径{path} 反射类{i} 失败原因{e}')
+        self.if_model = True

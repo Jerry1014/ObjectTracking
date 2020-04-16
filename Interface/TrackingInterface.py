@@ -10,9 +10,10 @@ class TrackingWin(QtWidgets.QWidget):
     signal_for_close_new_win = Signal()
     change_play_process_signal = Signal(int, int)
     after_close_tracking_signal = Signal()
+    change_play_state_signal = Signal(int)
 
     def __init__(self, index, settings, model_init_signal, change_play_process_slot, after_close_tracking_slot,
-                 frame_pixmap=None, slider_value=None, slider_max_num=None):
+                 change_play_state_slot, frame_pixmap=None, slider_value=None, slider_max_num=None):
         super().__init__()
         self.setWindowTitle('目标跟踪')
         self.index = index
@@ -22,6 +23,7 @@ class TrackingWin(QtWidgets.QWidget):
         self.image_win = MyImageLabel(self.after_tracking_signal)
         if frame_pixmap:
             self.image_win.setPixmap(frame_pixmap)
+            # fixme 第一帧在设置中的
         self.button = QtWidgets.QPushButton('请用鼠标选择跟踪对象')
         self.button.setEnabled(False)
         self.slider = QtWidgets.QSlider(Qt.Horizontal)
@@ -42,9 +44,11 @@ class TrackingWin(QtWidgets.QWidget):
         self.slider.valueChanged.connect(self.change_play_process_event)
         self.change_play_process_signal.connect(change_play_process_slot)
         self.after_close_tracking_signal.connect(after_close_tracking_slot)
+        self.change_play_state_signal.connect(change_play_state_slot)
 
         # 其他
         self.sub_win = None
+        self.model_state = 0
 
     @Slot()
     def after_tracking(self):
@@ -61,14 +65,18 @@ class TrackingWin(QtWidgets.QWidget):
             model_choose_win.activateWindow()
             self.sub_win = model_choose_win
 
+            self.slider.setEnabled(False)
             self.settings.tracking_object_rect = self.image_win.mouse_press_rect
             self.image_win.if_paint_mouse = False
 
     @Slot()
     def after_choose_model(self):
         self.button.setText('模型载入中')
-        self.model_init_signal.emit(self.sub_win.get_all_data())
+        all_data = self.sub_win.get_all_data()
+        self.model_state = 1
         self.sub_win = None
+        self.model_init_signal.emit(all_data)
+        self.change_play_state_signal.emit(self.index)
 
     @Slot()
     def change_play_process_event(self, value):
@@ -85,8 +93,8 @@ class TrackingWin(QtWidgets.QWidget):
             msg_box.setIconPixmap(image)
         return msg_box.exec_()
 
-    def set_frame(self, frame):
-        frame, cur_frame_num = frame
+    def set_frame(self, frame_data):
+        frame, cur_frame_num = frame_data.frame
         if type(frame) == str:
             self.image_win.setText(frame)
         else:
@@ -97,9 +105,34 @@ class TrackingWin(QtWidgets.QWidget):
             self.slider.blockSignals(True)
             self.slider.setValue(cur_frame_num)
             self.slider.blockSignals(False)
+        if self.model_state == 0:
+            self.settings.first_frame = frame
+        elif self.model_state == 1:
+            self.model_state = 2
+            self.button.setEnabled(True)
+            self.button.clicked.connect(self.pause_tracking)
+            self.button.click()
+        self.image_win.needed_paint_rect_list = frame_data.model_result
 
     def closeEvent(self, event):
         self.after_close_tracking_signal.emit()
+
+    @Slot()
+    def pause_tracking(self):
+        self.button.setText('开始')
+        self.button.clicked.disconnect(self.pause_tracking)
+        self.button.clicked.connect(self.start_tracking)
+        self.change_play_state_signal.emit(self.index)
+
+    @Slot()
+    def start_tracking(self):
+        """
+        用户按下开始的处理
+        """
+        self.button.setText('暂停')
+        self.button.clicked.disconnect(self.start_tracking)
+        self.button.clicked.connect(self.pause_tracking)
+        self.change_play_state_signal.emit(self.index)
 
 
 class MyImageLabel(QtWidgets.QLabel):
