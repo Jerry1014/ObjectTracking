@@ -4,7 +4,6 @@
 """
 from os import walk
 from os.path import exists, sep
-from queue import Queue
 
 from cv2.cv2 import imread, cvtColor, COLOR_BGR2RGB, VideoCapture, CAP_PROP_POS_FRAMES, CAP_PROP_FRAME_COUNT, \
     CAP_PROP_FRAME_HEIGHT, CAP_PROP_FRAME_WIDTH
@@ -90,8 +89,6 @@ class ReadVideoFromFile(ReadVideoBase):
             if ret:
                 return cvtColor(frame, COLOR_BGR2RGB), self.video_capture.get(CAP_PROP_POS_FRAMES) - 1
             else:
-                # 此处释放逻辑对于视频可行，对于摄像头则有错
-                self.release_init()
                 raise EndOfVideoError()
         else:
             raise EndOfVideoError()

@@ -6,7 +6,6 @@ import sys
 from PySide2 import QtWidgets
 from PySide2.QtCore import QThreadPool
 
-from Interface.Interface import MainWin
 from Interface.MonitoringInterface import MonitoringInterface
 from Settings import settings
 from TestModelController import TestModelController
@@ -16,12 +15,13 @@ class Start:
     def __init__(self):
         self.settings = settings
         self.model_controller = TestModelController(self.settings)
+        self.model_init_slot = self.model_controller.init_object_tracking_model
 
     def run(self):
         app = QtWidgets.QApplication([])
 
         QThreadPool.globalInstance().start(self.model_controller)
-        widget = MonitoringInterface(self.settings)
+        widget = MonitoringInterface(self.settings, self.model_init_slot)
         widget.show()
 
         app.exec_()

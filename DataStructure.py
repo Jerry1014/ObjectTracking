@@ -12,3 +12,11 @@ class MonitorConfig:
         """
         self.name = name
         self.total_frame_num = total_frame_num
+
+
+class FrameData:
+    def __init__(self, index, frame, model_result, benckmark):
+        self.index = index
+        self.frame = frame
+        self.model_result = model_result
+        self.benckmark = benckmark

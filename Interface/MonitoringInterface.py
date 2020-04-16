@@ -6,15 +6,13 @@ from time import sleep
 from PySide2 import QtWidgets
 from PySide2.QtCore import Slot, Qt, Signal
 from PySide2.QtGui import QPixmap, QImage
-from PySide2.QtWidgets import QApplication
-
-from DataStructure import MonitorConfig
+from DataStructure import FrameData
 
 
 class MonitoringInterface(QtWidgets.QWidget):
-    frame_update_signal = Signal(int, list, list, list)
+    frame_update_signal = Signal(FrameData)
 
-    def __init__(self, settings):
+    def __init__(self, settings, model_init_slot):
         super().__init__()
         # 设置
         self.settings = settings
@@ -37,7 +35,7 @@ class MonitoringInterface(QtWidgets.QWidget):
         for i, config in enumerate(self.settings.monitor_config_list):
             # 是否需要传入更多的信息
             monitor = MonitoringSubInterface(i, config, self.settings.each_monitor_rect, self.change_play_state,
-                                             self.change_play_process)
+                                             self.change_play_process, self.start_tracking)
             self.monitor_list.append(monitor)
             self.layout.addWidget(monitor, i // column_number + 1, i % column_number + 1)
         self.setLayout(self.layout)
@@ -46,9 +44,9 @@ class MonitoringInterface(QtWidgets.QWidget):
         self.sub_win = None
         self.frame_update_signal.connect(self.set_frame)
 
-    @Slot(int, list, list, list)
-    def set_frame(self, monitor_num: int, frame, model_result_list, gt):
-        self.monitor_list[monitor_num].set_frame(frame[0])
+    @Slot(FrameData)
+    def set_frame(self, frame_data):
+        self.monitor_list[frame_data.index].set_frame(frame_data.frame)
 
     @Slot(int)
     def change_play_state(self, index):
@@ -58,12 +56,17 @@ class MonitoringInterface(QtWidgets.QWidget):
     def change_play_process(self, index, frame_num):
         self.play_state[index] = frame_num
 
+    @Slot(int)
+    def start_tracking(self, index):
+        print(index)
+
 
 class MonitoringSubInterface(QtWidgets.QWidget):
     play_state_change_signal = Signal(int)
     play_process_change_signal = Signal(int, int)
+    start_tracking_signal = Signal(int)
 
-    def __init__(self, index, monitor_config, monitor_rect, play_state_slot, play_process_slot):
+    def __init__(self, index, monitor_config, monitor_rect, play_state_slot, play_process_slot, start_tracking_slot):
         super().__init__()
         self.index = index
         # 部件
@@ -73,6 +76,7 @@ class MonitoringSubInterface(QtWidgets.QWidget):
         self.slider = QtWidgets.QSlider(Qt.Horizontal)
         self.slider.setRange(0, monitor_config.total_frame_num)
         self.play_button = QtWidgets.QPushButton('暂停')
+        self.track_button = QtWidgets.QPushButton('跟踪')
         self.play_state = True
 
         # 布局
@@ -81,6 +85,7 @@ class MonitoringSubInterface(QtWidgets.QWidget):
         self.main_layout.addWidget(self.monitor_win)
         self.sub_layout = QtWidgets.QHBoxLayout()
         self.sub_layout.addWidget(self.play_button)
+        self.sub_layout.addWidget(self.track_button)
         self.sub_layout.addWidget(self.slider)
         self.main_layout.addLayout(self.sub_layout)
         self.setLayout(self.main_layout)
@@ -89,8 +94,11 @@ class MonitoringSubInterface(QtWidgets.QWidget):
         self.play_state_change_signal.connect(play_state_slot)
         self.slider.valueChanged.connect(self.slider_event)
         self.play_process_change_signal.connect(play_process_slot)
+        self.track_button.clicked.connect(self.track_button_event)
+        self.start_tracking_signal.connect(start_tracking_slot)
 
     def set_frame(self, frame):
+        frame, cur_frame_num = frame
         if type(frame) == str:
             self.monitor_win.setText(frame)
         else:
@@ -98,29 +106,26 @@ class MonitoringSubInterface(QtWidgets.QWidget):
             tem_pixmap = QPixmap.fromImage(QImage(frame, w, h, ch * w, QImage.Format_RGB888))
             tem_pixmap.scaled(self.monitor_win.size())
             self.monitor_win.setPixmap(tem_pixmap)
+            self.slider.blockSignals(True)
+            self.slider.setValue(cur_frame_num)
+            self.slider.blockSignals(False)
 
     @Slot()
     def button_event(self):
         if self.play_state:
-            self.play_button.setText('暂停')
-        else:
             self.play_button.setText('播放')
+        else:
+            self.play_button.setText('暂停')
         self.play_state = not self.play_state
         self.play_state_change_signal.emit(self.index)
 
     @Slot()
     def slider_event(self, value):
+        if self.play_state:
+            self.play_button.setText('播放')
+            self.play_state = not self.play_state
         self.play_process_change_signal.emit(self.index, value)
 
-
-if __name__ == '__main__':
-    app = QApplication()
-    from Settings import Settings
-
-    test = Settings()
-    test.monitor_config_list = [MonitorConfig('test', 10) for _ in range(5)]
-    test.each_monitor_rect = (100, 100)
-
-    test = MonitoringInterface(test)
-    test.show()
-    app.exec_()
+    @Slot()
+    def track_button_event(self):
+        self.start_tracking_signal.emit(self.index)
