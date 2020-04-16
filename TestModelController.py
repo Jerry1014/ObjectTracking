@@ -58,8 +58,8 @@ class TestModelController(QRunnable):
         monitor_num = len(self.settings.monitor_config_list)
         last_emit_frame_time = [time() for _ in range(monitor_num + 1)]
         while not self.settings.if_end:
-            while time() - last_emit_frame_time[-1] < 0.03 * monitor_num:
-                sleep(0.03)
+            while time() - last_emit_frame_time[-1] < 0.02 * monitor_num:
+                sleep(0.02)
             for index, sign in enumerate(self.settings.monitor_play_state):
                 if sign:
                     try:
@@ -77,6 +77,7 @@ class TestModelController(QRunnable):
                     new_frame_config = FrameData(index, frame, None, None)
                     self.emit_frame_signal.emit(new_frame_config)
                     last_emit_frame_time[index] = time()
+            last_emit_frame_time[-1] = time()
 
     @Slot(dict)
     def init_object_tracking_model(self, model_name_list):

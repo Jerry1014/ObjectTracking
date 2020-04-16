@@ -99,7 +99,7 @@ class TrackingWin(QtWidgets.QWidget):
             self.slider.blockSignals(False)
 
     def closeEvent(self, event):
-        self.after_tracking_signal.emit()
+        self.after_close_tracking_signal.emit()
 
 
 class MyImageLabel(QtWidgets.QLabel):
