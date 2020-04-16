@@ -55,8 +55,10 @@ class TestModelController(QRunnable):
         self.emit_frame_signal = self.settings.frame_update_signal
 
         # 帧发送
-        last_emit_frame_time = time()
+        last_emit_frame_time = [time() for _ in range(len(self.settings.monitor_config_list)+1)]
         while not self.settings.if_end:
+            while time() - last_emit_frame_time[-1] < 0.03:
+                sleep(0.01)
             for index, sign in enumerate(self.settings.monitor_play_state):
                 if sign:
                     try:
@@ -69,12 +71,12 @@ class TestModelController(QRunnable):
                         frame = ('视频已结束', None)
                     # todo model_rect gt
 
-                    while time() - last_emit_frame_time < 0.01:
+                    while time() - last_emit_frame_time[index] < 0.03:
                         sleep(0.01)
                     new_frame_config = FrameData(index, frame, None, None)
                     self.emit_frame_signal.emit(new_frame_config)
-                    last_emit_frame_time = time()
+                    last_emit_frame_time[index] = time()
 
-    @Slot(list)
+    @Slot(dict)
     def init_object_tracking_model(self, model_name_list):
-        pass
+        print(model_name_list)
