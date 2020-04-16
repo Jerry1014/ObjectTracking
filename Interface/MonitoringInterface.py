@@ -44,16 +44,13 @@ class MonitoringInterface(QtWidgets.QWidget):
 
         # 其他
         self.sub_win = None
+        self.tem_index_monitor = None
         self.frame_update_signal.connect(self.set_frame)
         self.model_init_signal.connect(model_init_slot)
 
     @Slot(FrameData)
     def set_frame(self, frame_data):
-        if self.sub_win:
-            # self.sub_win.set_frame(frame_data.frame)
-            print('000')
-        else:
-            self.monitor_list[frame_data.index].set_frame(frame_data.frame)
+        self.monitor_list[frame_data.index].set_frame(frame_data.frame)
 
     @Slot(int)
     def change_play_state(self, index):
@@ -65,12 +62,21 @@ class MonitoringInterface(QtWidgets.QWidget):
 
     @Slot(tuple)
     def start_tracking(self, frame):
-        frame_pixmap, slider_value = frame
+        index, frame_pixmap, slider_value, slider_max_num = frame
         for i in range(len(self.play_state)):
             self.play_state[i] = False
-        self.sub_win = TrackingWin(self.settings, self.model_init_signal, frame_pixmap, slider_value)
+        self.sub_win = TrackingWin(index, self.settings, self.model_init_signal, self.change_play_process,
+                                   self.after_close_tracking, frame_pixmap, slider_value, slider_max_num)
         self.sub_win.show()
         self.sub_win.activateWindow()
+        self.tem_index_monitor = (index, self.monitor_list[index])
+        self.monitor_list[index] = self.sub_win
+
+    @Slot()
+    def after_close_tracking(self):
+        index, monitor = self.tem_index_monitor
+        self.monitor_list[index] = monitor
+        self.sub_win = None
 
 
 class MonitoringSubInterface(QtWidgets.QWidget):
@@ -86,7 +92,8 @@ class MonitoringSubInterface(QtWidgets.QWidget):
         self.monitor_win = QtWidgets.QLabel()
         self.monitor_win.setFixedSize(*monitor_rect)
         self.slider = QtWidgets.QSlider(Qt.Horizontal)
-        self.slider.setRange(0, monitor_config.total_frame_num)
+        self.slider_max_num = monitor_config.total_frame_num
+        self.slider.setRange(0, self.slider_max_num)
         self.play_button = QtWidgets.QPushButton('暂停')
         self.track_button = QtWidgets.QPushButton('跟踪')
         self.play_state = True
@@ -140,4 +147,5 @@ class MonitoringSubInterface(QtWidgets.QWidget):
 
     @Slot()
     def track_button_event(self):
-        self.start_tracking_signal.emit((self.monitor_win.pixmap(), self.slider.value()))
+        self.start_tracking_signal.emit(
+            (self.index, self.monitor_win.pixmap(), self.slider.value(), self.slider_max_num))

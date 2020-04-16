@@ -8,10 +8,14 @@ from PySide2.QtGui import QMouseEvent, QPaintEvent, QPainter, QPixmap, QImage, Q
 class TrackingWin(QtWidgets.QWidget):
     after_tracking_signal = Signal()
     signal_for_close_new_win = Signal()
+    change_play_process_signal = Signal(int, int)
+    after_close_tracking_signal = Signal()
 
-    def __init__(self, settings, model_init_signal, frame_pixmap=None, slider_value=None):
+    def __init__(self, index, settings, model_init_signal, change_play_process_slot, after_close_tracking_slot,
+                 frame_pixmap=None, slider_value=None, slider_max_num=None):
         super().__init__()
         self.setWindowTitle('目标跟踪')
+        self.index = index
         self.settings = settings
 
         # 部件
@@ -23,6 +27,7 @@ class TrackingWin(QtWidgets.QWidget):
         self.slider = QtWidgets.QSlider(Qt.Horizontal)
         if slider_value:
             self.slider.setValue(slider_value)
+            self.slider.setRange(0, slider_max_num)
 
         # 布局
         self.layout = QtWidgets.QVBoxLayout()
@@ -34,6 +39,9 @@ class TrackingWin(QtWidgets.QWidget):
         # 信号槽
         self.after_tracking_signal.connect(self.after_tracking)
         self.model_init_signal = model_init_signal
+        self.slider.valueChanged.connect(self.change_play_process_event)
+        self.change_play_process_signal.connect(change_play_process_slot)
+        self.after_close_tracking_signal.connect(after_close_tracking_slot)
 
         # 其他
         self.sub_win = None
@@ -62,6 +70,10 @@ class TrackingWin(QtWidgets.QWidget):
         self.model_init_signal.emit(self.sub_win.get_all_data())
         self.sub_win = None
 
+    @Slot()
+    def change_play_process_event(self, value):
+        self.change_play_process_signal.emit(self.index, value)
+
     def _show_msg(self, msg, if_cancel=None, if_image=None, image=None):
         msg_box = QtWidgets.QMessageBox()
         msg_box.setWindowTitle('提示')
@@ -85,6 +97,9 @@ class TrackingWin(QtWidgets.QWidget):
             self.slider.blockSignals(True)
             self.slider.setValue(cur_frame_num)
             self.slider.blockSignals(False)
+
+    def closeEvent(self, event):
+        self.after_tracking_signal.emit()
 
 
 class MyImageLabel(QtWidgets.QLabel):

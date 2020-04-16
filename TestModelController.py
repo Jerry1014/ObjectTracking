@@ -55,10 +55,11 @@ class TestModelController(QRunnable):
         self.emit_frame_signal = self.settings.frame_update_signal
 
         # 帧发送
-        last_emit_frame_time = [time() for _ in range(len(self.settings.monitor_config_list)+1)]
+        monitor_num = len(self.settings.monitor_config_list)
+        last_emit_frame_time = [time() for _ in range(monitor_num + 1)]
         while not self.settings.if_end:
-            while time() - last_emit_frame_time[-1] < 0.03:
-                sleep(0.01)
+            while time() - last_emit_frame_time[-1] < 0.03 * monitor_num:
+                sleep(0.03)
             for index, sign in enumerate(self.settings.monitor_play_state):
                 if sign:
                     try:
