@@ -36,6 +36,7 @@ class Settings:
         self.monitor_play_state = list()
         self.each_monitor_rect = (500, 500)
         self.frame_update_signal = None
+        self.if_tracking = False
 
     def get_image_from_first_frame_by_rect(self, rect):
         rect = [int(i) for i in rect]

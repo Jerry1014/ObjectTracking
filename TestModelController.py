@@ -76,18 +76,24 @@ class TestModelController(QRunnable):
                     except EndOfVideoError:
                         frame = ('视频已结束', None)
                     result_rect_list = list()
-                    if self.if_model:
-                        # 将当前帧输入到模型输入队列
-                        for i in self.model_input_queue_list:
-                            i.put(frame[0])
-                        # 取回模型结果
-                        for i in self.model_output_queue_list:
-                            result_rect_list.append(i.get())
-                    # todo model_rect
+                    benckmark = list()
+                    if self.settings.if_tracking:
+                        # 取模型结果
+                        if self.if_model:
+                            # 将当前帧输入到模型输入队列
+                            for i in self.model_input_queue_list:
+                                i.put(frame[0])
+                            # 取回模型结果
+                            for i in self.model_output_queue_list:
+                                result_rect_list.append(i.get())
+                        # todo gt
+                        # todo 模型评估
+                    else:
+                        self.exit_event.set()
 
                     while time() - last_emit_frame_time[index] < 0.03:
                         sleep(0.01)
-                    new_frame_config = FrameData(index, frame, result_rect_list, None)
+                    new_frame_config = FrameData(index, frame, result_rect_list, benckmark)
                     self.emit_frame_signal.emit(new_frame_config)
                     last_emit_frame_time[index] = time()
             last_emit_frame_time[-1] = time()
@@ -95,6 +101,10 @@ class TestModelController(QRunnable):
 
     @Slot(dict)
     def init_object_tracking_model(self, model_name_list):
+        self.exit_event.clear()
+        self.model_output_queue_list = list()
+        self.model_input_queue_list = list()
+
         cf = ConfigParser()
         cf.read('./Model/ModelConfig.ini')
         for i in model_name_list.keys():

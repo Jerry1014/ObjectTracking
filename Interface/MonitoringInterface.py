@@ -6,6 +6,7 @@ from time import sleep
 from PySide2 import QtWidgets
 from PySide2.QtCore import Slot, Qt, Signal
 from PySide2.QtGui import QPixmap, QImage
+
 from DataStructure import FrameData
 from Interface.TrackingInterface import TrackingWin
 
@@ -76,6 +77,7 @@ class MonitoringInterface(QtWidgets.QWidget):
 
     @Slot()
     def after_close_tracking(self):
+        self.settings.if_tracking = False
         index, monitor = self.tem_index_monitor
         self.monitor_list[index] = monitor
         for index, state in enumerate(self.play_state):

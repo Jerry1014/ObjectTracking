@@ -3,7 +3,6 @@ from configparser import ConfigParser
 from PySide2 import QtWidgets
 from PySide2.QtCore import Slot, Signal, QRect, Qt
 from PySide2.QtGui import QMouseEvent, QPaintEvent, QPainter, QPixmap, QImage, QCloseEvent
-import numpy as np
 
 
 class TrackingWin(QtWidgets.QWidget):
@@ -80,9 +79,10 @@ class TrackingWin(QtWidgets.QWidget):
 
     @Slot()
     def after_choose_model(self):
+        self.button.setText('模型载入中')
         all_data = self.sub_win.get_all_data()
         self.sub_win = None
-        self.button.setText('模型载入中')
+        self.settings.if_tracking = True
         self.model_init_signal.emit(all_data)
         self.model_state = 1
         self.change_play_state_signal.emit(self.index)
