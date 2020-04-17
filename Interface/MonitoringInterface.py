@@ -77,7 +77,9 @@ class MonitoringInterface(QtWidgets.QWidget):
     @Slot()
     def after_close_tracking(self):
         index, monitor = self.tem_index_monitor
-        self.monitor_list[index] = monitor
+        for index, state in enumerate(self.play_state):
+            if not state:
+                self.monitor_list[index].button_event()
         self.change_play_state(index)
         self.sub_win = None
 
