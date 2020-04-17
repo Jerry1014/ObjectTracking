@@ -3,6 +3,7 @@ from configparser import ConfigParser
 from PySide2 import QtWidgets
 from PySide2.QtCore import Slot, Signal, QRect, Qt
 from PySide2.QtGui import QMouseEvent, QPaintEvent, QPainter, QPixmap, QImage, QCloseEvent
+import numpy as np
 
 
 class TrackingWin(QtWidgets.QWidget):
@@ -13,7 +14,7 @@ class TrackingWin(QtWidgets.QWidget):
     change_play_state_signal = Signal(int)
 
     def __init__(self, index, settings, model_init_signal, change_play_process_slot, after_close_tracking_slot,
-                 change_play_state_slot, frame_pixmap=None, slider_value=None, slider_max_num=None):
+                 change_play_state_slot, last_frame=None, slider_value=None, slider_max_num=None):
         super().__init__()
         self.setWindowTitle('目标跟踪')
         self.index = index
@@ -21,9 +22,12 @@ class TrackingWin(QtWidgets.QWidget):
 
         # 部件
         self.image_win = MyImageLabel(self.after_tracking_signal)
-        if frame_pixmap:
-            self.image_win.setPixmap(frame_pixmap)
-            # fixme 第一帧在设置中的
+        if last_frame is not None:
+            h, w, ch = last_frame.shape
+            tem_pixmap = QPixmap.fromImage(QImage(last_frame, w, h, ch * w, QImage.Format_RGB888))
+            tem_pixmap.scaled(self.image_win.size())
+            self.image_win.setPixmap(tem_pixmap)
+            self.settings.first_frame = last_frame
         self.button = QtWidgets.QPushButton('请用鼠标选择跟踪对象')
         self.button.setEnabled(False)
         self.slider = QtWidgets.QSlider(Qt.Horizontal)
@@ -55,7 +59,12 @@ class TrackingWin(QtWidgets.QWidget):
         """
         用户选择追踪对象后的处理
         """
-        if self._show_msg('确认跟踪对象？') == QtWidgets.QMessageBox.Ok:
+        tracking_object_image = self.settings.get_image_from_first_frame_by_rect(self.image_win.mouse_press_rect)
+        h, w, ch = tracking_object_image.shape
+        tracking_object_image_pixmap = QPixmap.fromImage(
+            QImage(tracking_object_image, w, h, ch * w, QImage.Format_RGB888))
+        if self._show_msg('确认跟踪对象？', if_cancel=True, if_image=True,
+                          image=tracking_object_image_pixmap) == QtWidgets.QMessageBox.Ok:
             self.button.setText('选择模型')
             cf = ConfigParser()
             cf.read('./Model/ModelConfig.ini')
@@ -71,11 +80,11 @@ class TrackingWin(QtWidgets.QWidget):
 
     @Slot()
     def after_choose_model(self):
-        self.button.setText('模型载入中')
         all_data = self.sub_win.get_all_data()
-        self.model_state = 1
         self.sub_win = None
+        self.button.setText('模型载入中')
         self.model_init_signal.emit(all_data)
+        self.model_state = 1
         self.change_play_state_signal.emit(self.index)
 
     @Slot()
