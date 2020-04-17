@@ -1,12 +1,12 @@
 """
 模型类，给定跟踪的对象和当前帧，输出跟踪结果
 """
-from multiprocessing import Process, Event
+from multiprocessing import Process
 from queue import Queue, Empty
 
 
 class ModelBaseWithMultiProcess(Process):
-    def __init__(self, input_queue: Queue, output_queue: Queue, rect_color, exit_event: Event):
+    def __init__(self, input_queue: Queue, output_queue: Queue, rect_color, exit_event):
         super().__init__()
         self.first_frame = None
         self.tracking_object_rect = None

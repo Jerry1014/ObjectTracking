@@ -63,8 +63,9 @@ class MonitoringInterface(QtWidgets.QWidget):
     @Slot(tuple)
     def start_tracking(self, frame):
         index, frame_pixmap, slider_value, slider_max_num = frame
-        for i in range(len(self.play_state)):
-            self.play_state[i] = False
+        for index, state in enumerate(self.play_state):
+            if state:
+                self.monitor_list[index].button_event()
         self.sub_win = TrackingWin(index, self.settings, self.model_init_signal, self.change_play_process,
                                    self.after_close_tracking, self.change_play_state, frame_pixmap, slider_value,
                                    slider_max_num)
@@ -77,6 +78,7 @@ class MonitoringInterface(QtWidgets.QWidget):
     def after_close_tracking(self):
         index, monitor = self.tem_index_monitor
         self.monitor_list[index] = monitor
+        self.change_play_state(index)
         self.sub_win = None
 
 

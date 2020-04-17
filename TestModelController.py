@@ -3,10 +3,9 @@
 """
 import sys
 from configparser import ConfigParser
-from multiprocessing import Event
+from multiprocessing import Event, Queue
 from os import getcwd
 from os.path import sep
-from queue import Queue
 from time import sleep, time
 
 from PySide2.QtCore import Slot, QRunnable
