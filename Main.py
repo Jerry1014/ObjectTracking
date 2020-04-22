@@ -8,13 +8,13 @@ from PySide2.QtCore import QThreadPool
 
 from Interface.MonitoringInterface import MonitoringInterface
 from Settings import settings
-from ModelController import TestModelController
+from ModelController import ModelController
 
 
 class Start:
     def __init__(self):
         self.settings = settings
-        self.model_controller = TestModelController(self.settings)
+        self.model_controller = ModelController(self.settings)
         self.model_init_slot = self.model_controller.init_object_tracking_model
 
     def run(self):

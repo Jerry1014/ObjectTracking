@@ -15,7 +15,7 @@ from GroundTrue.GroundTrueParser1 import GroundTrueParser1
 from ReadVideo import ReadVideoFromFile, EndOfVideoError
 
 
-class TestModelController(QRunnable):
+class ModelController(QRunnable):
     def __init__(self, settings):
         super().__init__()
         self.settings = settings
@@ -121,7 +121,11 @@ class TestModelController(QRunnable):
                     while time() - last_emit_frame_time[index] < 0.03:
                         sleep(0.01)
                     new_frame_config = FrameData(index, frame, result_rect_list, benckmark_list)
-                    self.emit_frame_signal.emit(new_frame_config)
+                    try:
+                        self.emit_frame_signal.emit(new_frame_config)
+                    except RuntimeError:
+                        # 一般是由于界面退出导致
+                        print('模型控制类线程已退出')
                     last_emit_frame_time[index] = time()
             last_emit_frame_time[-1] = time()
         self.exit_event.set()
