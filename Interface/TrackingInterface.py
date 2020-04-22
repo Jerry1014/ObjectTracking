@@ -1,8 +1,9 @@
 from configparser import ConfigParser
 
 from PySide2 import QtWidgets
+from PySide2.QtCharts import QtCharts
 from PySide2.QtCore import Slot, Signal, QRect, Qt
-from PySide2.QtGui import QMouseEvent, QPaintEvent, QPainter, QPixmap, QImage, QCloseEvent
+from PySide2.QtGui import QMouseEvent, QPaintEvent, QPainter, QPixmap, QImage, QCloseEvent, QPen
 
 
 class TrackingWin(QtWidgets.QWidget):
@@ -13,27 +14,18 @@ class TrackingWin(QtWidgets.QWidget):
     change_play_state_signal = Signal(int)
 
     def __init__(self, index, settings, model_init_signal, change_play_process_slot, after_close_tracking_slot,
-                 change_play_state_slot, last_frame=None, slider_value=None, slider_max_num=None):
+                 change_play_state_slot, slider_max_num):
         super().__init__()
         self.setWindowTitle('目标跟踪')
         self.index = index
         self.settings = settings
-        self.settings.if_tracking = True
 
         # 部件
         self.image_win = MyImageLabel(self.after_tracking_signal)
-        if last_frame is not None:
-            h, w, ch = last_frame.shape
-            tem_pixmap = QPixmap.fromImage(QImage(last_frame, w, h, ch * w, QImage.Format_RGB888))
-            tem_pixmap.scaled(self.image_win.size())
-            self.image_win.setPixmap(tem_pixmap)
-            self.settings.first_frame = last_frame
         self.button = QtWidgets.QPushButton('请用鼠标选择跟踪对象')
         self.button.setEnabled(False)
         self.slider = QtWidgets.QSlider(Qt.Horizontal)
-        if slider_value:
-            self.slider.setValue(slider_value)
-            self.slider.setRange(0, slider_max_num)
+        self.slider.setRange(0, slider_max_num)
 
         # 布局
         self.layout = QtWidgets.QVBoxLayout()
@@ -53,6 +45,9 @@ class TrackingWin(QtWidgets.QWidget):
         # 其他
         self.sub_win = None
         self.model_state = 0
+        self.benckmart_list = None
+        self.benckmart_color_series_set = dict()
+        self.settings.if_tracking = True
 
     @Slot()
     def after_tracking(self):
@@ -85,6 +80,7 @@ class TrackingWin(QtWidgets.QWidget):
         self.sub_win = None
         self.model_init_signal.emit(all_data)
         self.model_state = 1
+        self.repaint()
         self.change_play_state_signal.emit(self.index)
 
     @Slot()
@@ -104,6 +100,7 @@ class TrackingWin(QtWidgets.QWidget):
 
     def set_frame(self, frame_data):
         frame, cur_frame_num = frame_data.frame
+        benckmark = frame_data.benckmark
         if type(frame) == str:
             self.image_win.setText(frame)
         else:
@@ -114,14 +111,56 @@ class TrackingWin(QtWidgets.QWidget):
             self.slider.blockSignals(True)
             self.slider.setValue(cur_frame_num)
             self.slider.blockSignals(False)
+            self.set_benckmark(cur_frame_num, benckmark)
         if self.model_state == 0:
+            # 未选择跟踪目标
             self.settings.first_frame = frame
         elif self.model_state == 1:
+            # 选择完模型后
             self.model_state = 2
             self.button.setEnabled(True)
             self.button.clicked.connect(self.pause_tracking)
             self.button.click()
         self.image_win.needed_paint_rect_list = frame_data.model_result
+
+    def set_benckmark(self, x, benckmark_list):
+        if benckmark_list:
+            # 初始化
+            if self.benckmart_list is None:
+                self.benckmart_list = list()
+                for benckmart in benckmark_list:
+                    new_widget = QtCharts.QChartView()
+                    width = self.size().toTuple()[0]
+                    new_widget.setFixedSize(width, width / 2)
+                    new_widget.chart().setTitle(benckmart[0])
+                    self.layout.addWidget(new_widget)
+                    color_data_series = dict()
+                    self.benckmart_list.append((new_widget, color_data_series))
+                    for model_result in benckmart[1:]:
+                        new_data_series = QtCharts.QSplineSeries()
+                        new_data_series.setPen(QPen(model_result[1]))
+                        new_widget.chart().addSeries(new_data_series)
+                        color_data_series[model_result[1]] = [new_data_series, model_result[0]]
+                self.setLayout(self.layout)
+                self.repaint()
+
+            # 添加点
+            for benckmart, chart_view_and_data_series_set in zip(benckmark_list, self.benckmart_list):
+                chart_view, data_series_set = chart_view_and_data_series_set
+                for model_result in benckmart[1:]:
+                    data_series, avg = data_series_set[model_result[1]]
+                    data_series.append(x, model_result[0])
+                    # 计算平均值
+                    data_series_count = data_series.count()
+                    if data_series_count == 0:
+                        avg = model_result[0]
+                    else:
+                        avg = (avg + model_result[0] / data_series_count) * data_series_count / (data_series_count + 1)
+                    data_series_set[model_result[1]][1] = avg
+                    data_series.setName(str(avg))
+                    chart_view.chart().removeSeries(data_series)
+                    chart_view.chart().addSeries(data_series)
+                chart_view.chart().createDefaultAxes()
 
     def closeEvent(self, event):
         self.after_close_tracking_signal.emit()

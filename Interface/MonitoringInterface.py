@@ -68,7 +68,7 @@ class MonitoringInterface(QtWidgets.QWidget):
             if state:
                 self.monitor_list[enu_index].button_event()
         self.sub_win = TrackingWin(index, self.settings, self.model_init_signal, self.change_play_process,
-                                   self.after_close_tracking, self.change_play_state)
+                                   self.after_close_tracking, self.change_play_state, slider_max_num)
         self.change_play_process(index, slider_value)
         self.sub_win.show()
         self.sub_win.activateWindow()
