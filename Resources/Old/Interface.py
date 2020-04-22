@@ -8,7 +8,7 @@ from PySide2.QtCharts import QtCharts
 from PySide2.QtCore import Slot, Signal, QRect, Qt
 from PySide2.QtGui import QPixmap, QImage, QMouseEvent, QPaintEvent, QPainter, QCloseEvent, QPen
 
-from InterfaceController import InterfaceSignalConnection
+from Resources.Old.InterfaceController import InterfaceSignalConnection
 
 
 class MainWin(QtWidgets.QWidget):
