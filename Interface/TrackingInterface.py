@@ -18,6 +18,7 @@ class TrackingWin(QtWidgets.QWidget):
         self.setWindowTitle('目标跟踪')
         self.index = index
         self.settings = settings
+        self.settings.if_tracking = True
 
         # 部件
         self.image_win = MyImageLabel(self.after_tracking_signal)
@@ -82,7 +83,6 @@ class TrackingWin(QtWidgets.QWidget):
         self.button.setText('模型载入中')
         all_data = self.sub_win.get_all_data()
         self.sub_win = None
-        self.settings.if_tracking = True
         self.model_init_signal.emit(all_data)
         self.model_state = 1
         self.change_play_state_signal.emit(self.index)

@@ -11,6 +11,7 @@ from time import sleep, time
 from PySide2.QtCore import Slot, QRunnable
 
 from DataStructure import MonitorConfig, FrameData
+from GroundTrue.GroundTrueParser1 import GroundTrueParser1
 from ReadVideo import ReadVideoFromFile, EndOfVideoError
 
 
@@ -23,7 +24,12 @@ class TestModelController(QRunnable):
         self.if_model = False
         self.model_input_queue_list = list()
         self.model_output_queue_list = list()
+        self.video_gt_list = list()
         self.exit_event = Event()
+
+        self.benckmark_list = self.settings.benckmart_list
+        for i in self.benckmark_list:
+            next(i[1])
 
     def run(self):
         # 载入视频与gt
@@ -37,7 +43,9 @@ class TestModelController(QRunnable):
             for i in video_config.sections():
                 tem_config = video_config[i]
                 tem_video_reader = ReadVideoFromFile()
-                tem_video_reader.init(sep.join(['.', 'Resources', 'video'] + tem_config['path'].split()))
+                tem_path_list = tem_config['path'].split()
+                tem_path_dir = ['.', 'Resources', 'video'] + tem_path_list[:-1]
+                tem_video_reader.init(sep.join(tem_path_dir + [tem_path_list[-1]]))
                 tem_w, tem_h = tem_video_reader.get_frame_shape()
                 if tem_w > max_video_width:
                     max_video_width = tem_w
@@ -48,6 +56,17 @@ class TestModelController(QRunnable):
                 monitor_config_list.append(tem_monitor_config)
 
                 # todo gt
+                video_gt_config = ConfigParser()
+                video_gt_config.read(sep.join(tem_path_dir + ['GTConfig.ini']))
+                tem_gt = None
+                try:
+                    gt_parser_section = video_gt_config[video_gt_config.sections()[0]]
+                    gt_filename = gt_parser_section['ground_true_filename']
+                    tem_gt = GroundTrueParser1().get_result_list(sep.join(tem_path_dir + [gt_filename])) \
+                        if gt_parser_section['parser'] == '0' else None
+                except IndexError:
+                    pass
+                self.video_gt_list.append(tem_gt)
         else:
             print('监控初始化失败，请检查配置文件')
             exit()
@@ -86,7 +105,9 @@ class TestModelController(QRunnable):
                             # 取回模型结果
                             for i in self.model_output_queue_list:
                                 result_rect_list.append(i.get())
-                        # todo gt
+                        if self.video_gt_list[index]:
+                            result_rect_list.append((self.video_gt_list[index][frame[1]], 'green'))
+
                         # todo 模型评估
                     else:
                         self.exit_event.set()

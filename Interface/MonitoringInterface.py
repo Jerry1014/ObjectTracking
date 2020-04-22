@@ -126,10 +126,10 @@ class MonitoringSubInterface(QtWidgets.QWidget):
 
     def set_frame(self, frame_data):
         frame, cur_frame_num = frame_data.frame
-        self.last_frame = frame
         if type(frame) == str:
             self.monitor_win.setText(frame)
         else:
+            self.last_frame = frame
             h, w, ch = frame.shape
             tem_pixmap = QPixmap.fromImage(QImage(frame, w, h, ch * w, QImage.Format_RGB888))
             tem_pixmap.scaled(self.monitor_win.size())

@@ -87,7 +87,7 @@ class ReadVideoFromFile(ReadVideoBase):
                 self.video_capture.set(CAP_PROP_POS_FRAMES, frame_num)
             ret, frame = self.video_capture.read()
             if ret:
-                return cvtColor(frame, COLOR_BGR2RGB), self.video_capture.get(CAP_PROP_POS_FRAMES) - 1
+                return cvtColor(frame, COLOR_BGR2RGB), int(self.video_capture.get(CAP_PROP_POS_FRAMES) - 1)
             else:
                 raise EndOfVideoError()
         else:

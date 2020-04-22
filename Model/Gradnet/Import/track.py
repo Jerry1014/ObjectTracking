@@ -528,8 +528,9 @@ def just_show():
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.Session(config=config)
+    # fixme 不能用绝对路径
     saver.restore(sess,
-                  r'C:\tem\PycharmProjects\ObjectTracking\Model\Gradnet\Import\ckpt\base_l5_1t_49\model_epoch49.ckpt')
+                  r'D:\TEM\PycharmProjects\ObjectTracking\Model\Gradnet\Import\ckpt\base_l5_1t_49\model_epoch49.ckpt')
 
     '''tracking process'''
     tem = run_siamesefc(opts, exemplarOp_init, instanceOp_init, instanceOp,
