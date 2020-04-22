@@ -97,17 +97,18 @@ class TestModelController(QRunnable):
                     result_rect_list = list()
                     benckmark_list = None
                     if self.settings.if_tracking:
+                        # 取模型结果
+                        if self.if_model:
+                            # 将当前帧输入到模型输入队列
+                            for i in self.model_input_queue_list:
+                                i.put(frame[0])
+                            # 取回模型结果
+                            for i in self.model_output_queue_list:
+                                result_rect_list.append(i.get())
+
                         if self.video_gt_list[index] and frame[1]:
                             gt = self.video_gt_list[index][frame[1]]
-                            # 取模型结果
                             if self.if_model:
-                                # 将当前帧输入到模型输入队列
-                                for i in self.model_input_queue_list:
-                                    i.put(frame[0])
-                                # 取回模型结果
-                                for i in self.model_output_queue_list:
-                                    result_rect_list.append(i.get())
-
                                 benckmark_list = tuple(
                                     (i[0],) + tuple((i[1].send((gt, j[0])), j[1]) for j in result_rect_list) for i in
                                     self.benckmark_list)
@@ -120,7 +121,12 @@ class TestModelController(QRunnable):
                     while time() - last_emit_frame_time[index] < 0.03:
                         sleep(0.01)
                     new_frame_config = FrameData(index, frame, result_rect_list, benckmark_list)
-                    self.emit_frame_signal.emit(new_frame_config)
+                    try:
+                        self.emit_frame_signal.emit(new_frame_config)
+                    except RuntimeError:
+                        # 一般是因为界面退出
+                        print('模型控制类线程无法连接界面，已退出')
+                        break
                     last_emit_frame_time[index] = time()
             last_emit_frame_time[-1] = time()
         self.exit_event.set()

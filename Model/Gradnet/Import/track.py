@@ -487,6 +487,7 @@ def run_siamesefc(opts, exemplarOp_init, instanceOp_init, instanceOp, zFeat2Op_g
 
 
 def just_show():
+    tf.reset_default_graph()
     # 设置输出信息的屏蔽级别
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     os.environ['C_CPP_MIN_LOG_LEVEL'] = '3'

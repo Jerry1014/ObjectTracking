@@ -44,7 +44,7 @@ class ImportThread(QRunnable):
         self._set_tracking_object()
         while True:
             try:
-                self.output_queue.put((self.get_tracking_result(self.input_queue.get(timeout=1)), self.color))
+                self.output_queue.put((self.get_tracking_result(self.input_queue.get(timeout=0.5)), self.color))
             except Empty:
                 pass
             except Exception as e:
