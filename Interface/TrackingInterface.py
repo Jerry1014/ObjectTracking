@@ -267,6 +267,8 @@ class ModelSelectWin(QtWidgets.QWidget):
         return data_list
 
     def button_event(self):
+        self.button.setEnabled(False)
+        self.button.setText('模型载入中')
         self.close()
 
     def closeEvent(self, event: QCloseEvent):

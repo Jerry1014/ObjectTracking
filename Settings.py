@@ -14,24 +14,15 @@ from ReadVideo import ReadVideoFromFile, ReadPicFromDir
 class Settings:
     def __init__(self):
         # 设置项
-        self.init_fix_rect = None
-        self.supported_formats = ('mp4', 'mkv', 'avi', 'mpg')
         self.benckmart_list = [('APE', APE().get_iterator()), ('AOR', AOR().get_iterator())]
         self.frame_queue_max_num = 10
         self.model_color_dict = None
-        self.file_reader = ReadVideoFromFile()
 
         # 在组件中传递的标记
         self.if_end = False
-        self.if_pause = True
-        self.if_have_gt = False
-        self.filename = None
         self.total_frame_num = None
-        self.cur_tracking_object_frame_num = 0
-        self.frame_queue = Queue(maxsize=self.frame_queue_max_num)
         self.first_frame: ndarray = None
         self.tracking_object_rect = None
-
         self.monitor_config_list = None
         self.monitor_play_state = list()
         self.each_monitor_rect = (500, 500)
