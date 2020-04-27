@@ -5,7 +5,7 @@ from time import sleep
 
 from PySide2 import QtWidgets
 from PySide2.QtCore import Slot, Qt, Signal
-from PySide2.QtGui import QPixmap, QImage
+from PySide2.QtGui import QPixmap, QImage, QWheelEvent
 
 from DataStructure import FrameData
 from Interface.TrackingInterface import TrackingWin
@@ -97,8 +97,9 @@ class MonitoringSubInterface(QtWidgets.QWidget):
         self.last_frame = None
         # 部件
         self.monitor_name = QtWidgets.QLabel(monitor_config.name)
-        self.monitor_win = QtWidgets.QLabel()
-        self.monitor_win.setFixedSize(*monitor_rect)
+        self.monitor_win = MonitoringSubInterfaceLabel(monitor_rect)
+        # self.monitor_win = QtWidgets.QLabel()
+        # self.monitor_win.setFixedSize(*monitor_rect)
         self.slider = QtWidgets.QSlider(Qt.Horizontal)
         self.slider_max_num = monitor_config.total_frame_num
         self.slider.setRange(0, self.slider_max_num)
@@ -130,10 +131,11 @@ class MonitoringSubInterface(QtWidgets.QWidget):
             self.monitor_win.setText(frame)
         else:
             self.last_frame = frame
-            h, w, ch = frame.shape
-            tem_pixmap = QPixmap.fromImage(QImage(frame, w, h, ch * w, QImage.Format_RGB888))
-            tem_pixmap.scaled(self.monitor_win.size())
-            self.monitor_win.setPixmap(tem_pixmap)
+            self.monitor_win.set_image(frame)
+            # h, w, ch = frame.shape
+            # tem_pixmap = QPixmap.fromImage(QImage(frame, w, h, ch * w, QImage.Format_RGB888))
+            # tem_pixmap.scaled(self.monitor_win.size())
+            # self.monitor_win.setPixmap(tem_pixmap)
             self.slider.blockSignals(True)
             self.slider.setValue(cur_frame_num)
             self.slider.blockSignals(False)
@@ -157,3 +159,45 @@ class MonitoringSubInterface(QtWidgets.QWidget):
     @Slot()
     def track_button_event(self):
         self.start_tracking_signal.emit((self.index, self.last_frame, self.slider.value(), self.slider_max_num))
+
+
+class MonitoringSubInterfaceLabel(QtWidgets.QLabel):
+    # 缩放比例不能随视频分辨率调整，不够ok
+    scale_value = 5000
+    step_each_angle = None
+    min_rect = (10, 10)
+
+    def __init__(self, max_rect):
+        super().__init__()
+        self.step_each_angle = max(max_rect) / self.scale_value
+        self.max_rect = max_rect
+        self.setFixedSize(*max_rect)
+        self.cur_pos_rect = [0, 0, *max_rect]
+
+    def wheelEvent(self, event: QWheelEvent):
+        step_w = -event.angleDelta().y() * self.step_each_angle
+        mouse_pos = event.position().toTuple()
+        step_x = step_w * mouse_pos[0] / self.max_rect[0]
+        if step_w > 0:
+            tem_x = max(self.cur_pos_rect[0] - step_x, 0)
+            tem_y = max(self.cur_pos_rect[1] - step_x / self.max_rect[0] * self.max_rect[1], 0)
+            tem_w = min(self.cur_pos_rect[2] + step_w, self.max_rect[0])
+            tem_h = min(self.cur_pos_rect[3] + step_w / self.max_rect[0] * self.max_rect[1], self.max_rect[1])
+        else:
+            tem_x = min(self.cur_pos_rect[0] - step_x,
+                        self.max_rect[0] - self.min_rect[0])
+            tem_y = min(self.cur_pos_rect[1] - step_x / self.max_rect[0] * self.max_rect[1],
+                        self.max_rect[1] - self.min_rect[1])
+            tem_w = max(self.cur_pos_rect[2] + step_w, self.min_rect[0])
+            tem_h = max(self.cur_pos_rect[3] + step_w / self.max_rect[0] * self.max_rect[1], self.min_rect[1])
+
+        self.cur_pos_rect = [tem_x, tem_y, tem_w, tem_h]
+
+    def set_image(self, image):
+        rect = [int(i) for i in self.cur_pos_rect]
+        # rect = [0, 0, 500, 500]
+        new_image = image[rect[1]:rect[1] + rect[3], rect[0]:rect[0] + rect[2]].copy(order='C')
+        h, w, ch = new_image.shape
+        tem_pixmap = QPixmap.fromImage(QImage(new_image, w, h, ch * w, QImage.Format_RGB888))
+        tem_pixmap = tem_pixmap.scaled(*self.max_rect)
+        self.setPixmap(tem_pixmap)
