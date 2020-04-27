@@ -253,6 +253,9 @@ class ModelSelectWin(QtWidgets.QWidget):
             model_election = AModelElection(name)
             self.model_election_list.append(model_election)
             self.layout.addWidget(model_election)
+        self.button = QtWidgets.QPushButton('确认')
+        self.button.clicked.connect(self.button_event)
+        self.layout.addWidget(self.button)
         self.setLayout(self.layout)
 
     def get_all_data(self):
@@ -262,6 +265,9 @@ class ModelSelectWin(QtWidgets.QWidget):
             if model:
                 data_list[model] = color
         return data_list
+
+    def button_event(self):
+        self.close()
 
     def closeEvent(self, event: QCloseEvent):
         self.close_signal.emit()
