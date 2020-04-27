@@ -165,7 +165,7 @@ class MonitoringSubInterfaceLabel(QtWidgets.QLabel):
     # 缩放比例不能随视频分辨率调整，不够ok
     scale_value = 5000
     step_each_angle = None
-    min_rect = (10, 10)
+    min_rect = (100, 100)
 
     def __init__(self, max_rect):
         super().__init__()
@@ -173,27 +173,35 @@ class MonitoringSubInterfaceLabel(QtWidgets.QLabel):
         self.max_rect = max_rect
         self.setFixedSize(*max_rect)
         self.cur_pos_rect = [0, 0, *max_rect]
+        self.last_frame = None
 
     def wheelEvent(self, event: QWheelEvent):
         step_w = -event.angleDelta().y() * self.step_each_angle
         mouse_pos = event.position().toTuple()
         step_x = step_w * mouse_pos[0] / self.max_rect[0]
+        step_h = step_w / self.max_rect[0] * self.max_rect[1]
+        step_y = step_h * mouse_pos[1] / self.max_rect[1]
+        tem_x = self.cur_pos_rect[0] - step_x
+        tem_y = self.cur_pos_rect[1] - step_y
+        tem_w = self.cur_pos_rect[2] + step_w
+        tem_h = self.cur_pos_rect[3] + step_h
         if step_w > 0:
-            tem_x = max(self.cur_pos_rect[0] - step_x, 0)
-            tem_y = max(self.cur_pos_rect[1] - step_x / self.max_rect[0] * self.max_rect[1], 0)
-            tem_w = min(self.cur_pos_rect[2] + step_w, self.max_rect[0])
-            tem_h = min(self.cur_pos_rect[3] + step_w / self.max_rect[0] * self.max_rect[1], self.max_rect[1])
+            tem_x = max(tem_x, 0)
+            tem_y = max(tem_y, 0)
+            tem_w = min(tem_w, self.max_rect[0])
+            tem_h = min(tem_h, self.max_rect[1])
         else:
-            tem_x = min(self.cur_pos_rect[0] - step_x,
-                        self.max_rect[0] - self.min_rect[0])
-            tem_y = min(self.cur_pos_rect[1] - step_x / self.max_rect[0] * self.max_rect[1],
-                        self.max_rect[1] - self.min_rect[1])
-            tem_w = max(self.cur_pos_rect[2] + step_w, self.min_rect[0])
-            tem_h = max(self.cur_pos_rect[3] + step_w / self.max_rect[0] * self.max_rect[1], self.min_rect[1])
+            tem_x = min(tem_x, self.max_rect[0] - self.min_rect[0])
+            tem_y = min(tem_y, self.max_rect[1] - self.min_rect[1])
+            tem_w = max(tem_w, self.min_rect[0])
+            tem_h = max(tem_h, self.min_rect[1])
 
-        self.cur_pos_rect = [tem_x, tem_y, tem_w, tem_h]
+        self.cur_pos_rect = (tem_x, tem_y, tem_w, tem_h)
+        if self.last_frame is not None:
+            self.set_image(self.last_frame)
 
     def set_image(self, image):
+        self.last_frame = image
         rect = [int(i) for i in self.cur_pos_rect]
         # rect = [0, 0, 500, 500]
         new_image = image[rect[1]:rect[1] + rect[3], rect[0]:rect[0] + rect[2]].copy(order='C')
