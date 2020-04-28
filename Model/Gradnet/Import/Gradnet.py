@@ -1,20 +1,11 @@
-# Modified by lipeixia 2019.
-"""
-@InProceedings{GradNet_ICCV2019,
-author = {Peixia Li, Boyu Chen, Wanli Ouyang, Dong Wang, Xiaoyun Yang, Huchuan Lu},
-title = {GradNet: Gradient-Guided Network for Visual Object Tracking},
-booktitle = {ICCV},
-month = {October},
-year = {2019}
-}
-"""
-import os
+from multiprocessing import Process
+from queue import Empty
 
+import tensorflow as tf
+import os
 import cv2
 import numpy as np
-import tensorflow as tf
 from Model.Gradnet.Import.siamese import SiameseNet
-
 
 def getOpts(opts):
     opts['numScale'] = 3
@@ -307,243 +298,244 @@ def trackerEval(score, score_nosia, sx, targetPosition, window, opts):
     return newTargetPosition, bestScale
 
 
-'''----------------------------------------main-----------------------------------------------------'''
+class Gradnet(Process):
+    def __init__(self, input_queue, output_queue, rect_color, exit_event):
+        super().__init__()
+        self.input_queue = input_queue
+        self.output_queue = output_queue
+        self.rect_color = rect_color
+        self.exit_event = exit_event
 
+    def run(self) -> None:
+        tf.reset_default_graph()
+        # 设置输出信息的屏蔽级别
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+        os.environ['C_CPP_MIN_LOG_LEVEL'] = '3'
+        # opts:设置字典
+        opts = getOpts(dict())
 
-def run_siamesefc(opts, exemplarOp_init, instanceOp_init, instanceOp, zFeat2Op_gra, zFeat5Op_gra, zFeat5Op_sia,
-                  scoreOp_sia, scoreOp_gra, zFeat2Op_init, sess, display):
-    my_img, tracking_object = yield
-    # todo 追踪目标位置和大小
-    targetPosition, targetSize = tracking_object
-    im = my_img
+        '''define input tensors and network'''
+        exemplarOp_init = tf.placeholder(tf.float32, [1, opts['exemplarSize'], opts['exemplarSize'], 3])
+        instanceOp_init = tf.placeholder(tf.float32, [1, opts['instanceSize'], opts['instanceSize'], 3])
+        instanceOp = tf.placeholder(tf.float32, [3, opts['instanceSize'], opts['instanceSize'], 3])
+        isTrainingOp = tf.convert_to_tensor(False, dtype='bool', name='is_training')
+        sn = SiameseNet()
 
-    avgChans = np.mean(im, axis=(
-        0, 1))
-    wcz = targetSize[1] + opts['contextAmount'] * np.sum(targetSize)
-    hcz = targetSize[0] + opts['contextAmount'] * np.sum(targetSize)
-    sz = np.sqrt(wcz * hcz)
-    scalez = opts['exemplarSize'] / sz
+        '''build the model'''
+        # initial embedding
+        with tf.variable_scope('siamese') as scope:
+            zFeat2Op_init, zFeat5Op_init = sn.extract_gra_fea_template(exemplarOp_init, opts, isTrainingOp)
+            scoreOp_init = sn.response_map_cal(instanceOp_init, zFeat5Op_init, opts, isTrainingOp)
+        # gradient calculation
+        respSz = int(scoreOp_init.get_shape()[1])
+        respSz = [respSz, respSz]
+        respStride = 8
+        fixedLabel, instanceWeight = createLabels(respSz, opts['lossRPos'] / respStride, opts['lossRNeg'] / respStride,
+                                                  1)
+        instanceWeightOp = tf.constant(instanceWeight, dtype=tf.float32)
+        yOp = tf.constant(fixedLabel, dtype=tf.float32)
+        with tf.name_scope("logistic_loss"):
+            lossOp_init = sn.loss(scoreOp_init, yOp, instanceWeightOp)
+        grad_init = tf.gradients(lossOp_init, zFeat2Op_init)
+        # template update and get score map
+        with tf.variable_scope('siamese') as scope:
+            zFeat5Op_gra, zFeat2Op_gra = sn.template_update_based_grad(zFeat2Op_init, grad_init[0], opts, isTrainingOp)
+            scope.reuse_variables()
+            zFeat5Op_sia = sn.extract_sia_fea_template(exemplarOp_init, opts, isTrainingOp)
+            scoreOp_sia = sn.response_map_cal(instanceOp, zFeat5Op_sia, opts, isTrainingOp)
+            scoreOp_gra = sn.response_map_cal(tf.expand_dims(instanceOp[1], 0), zFeat5Op_gra, opts, isTrainingOp)
 
-    zCrop, _ = getSubWinTracking(im, targetPosition, (opts['exemplarSize'], opts['exemplarSize']),
-                                 (np.around(sz), np.around(sz)), avgChans)
+        '''restore pretrained network'''
+        saver = tf.train.Saver()
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        sess = tf.Session(config=config)
+        path = os.path.sep.join(
+            [os.getcwd()] + ['Model', 'Gradnet', 'Import', 'ckpt', 'base_l5_1t_49', 'model_epoch49.ckpt'])
+        saver.restore(sess, path)
 
-    if opts['subMean']:
-        pass
+        '''tracking process'''
+        tracking_object = self.input_queue.get()
+        im = tracking_object[0]
+        x, y, w, h = tracking_object[1]
+        targetPosition, targetSize = np.array((y + h / 2, x + w / 2)), np.array((h, w))
 
-    dSearch = (opts['instanceSize'] - opts['exemplarSize']) / 2
-    pad = dSearch / scalez
-    sx = sz + 2 * pad
+        avgChans = np.mean(im, axis=(
+            0, 1))
+        wcz = targetSize[1] + opts['contextAmount'] * np.sum(targetSize)
+        hcz = targetSize[0] + opts['contextAmount'] * np.sum(targetSize)
+        sz = np.sqrt(wcz * hcz)
+        scalez = opts['exemplarSize'] / sz
 
-    minSx = 0.2 * sx
-    maxSx = 5.0 * sx
+        zCrop, _ = getSubWinTracking(im, targetPosition, (opts['exemplarSize'], opts['exemplarSize']),
+                                     (np.around(sz), np.around(sz)), avgChans)
 
-    winSz = opts['scoreSize'] * opts['responseUp']
-    if opts['windowing'] == 'cosine':
-        hann = np.hanning(winSz).reshape(winSz, 1)
-        window = hann.dot(hann.T)
-    elif opts['windowing'] == 'uniform':
-        window = np.ones((winSz, winSz), dtype=np.float32)
+        if opts['subMean']:
+            pass
 
-    window = window / np.sum(window)
-    scales = np.array([opts['scaleStep'] ** i for i in range(int(np.ceil(opts['numScale'] / 2.0) - opts['numScale']),
-                                                             int(np.floor(opts['numScale'] / 2.0) + 1))])
+        dSearch = (opts['instanceSize'] - opts['exemplarSize']) / 2
+        pad = dSearch / scalez
+        sx = sz + 2 * pad
 
-    '''initialization at the first frame'''
-    xCrops = makeScalePyramid(im, targetPosition, sx * scales, opts['instanceSize'], avgChans, None, opts)
-    xCrops0 = np.expand_dims(xCrops[1], 0)
-    zCrop = np.expand_dims(zCrop, axis=0)
-    zCrop0 = np.copy(zCrop)
+        minSx = 0.2 * sx
+        maxSx = 5.0 * sx
 
-    zFeat5_gra_init, zFeat2_gra_init, zFeat5_sia_init = sess.run([zFeat5Op_gra, zFeat2Op_gra, zFeat5Op_sia],
-                                                                 feed_dict={exemplarOp_init: zCrop0,
-                                                                            instanceOp_init: xCrops0,
-                                                                            instanceOp: xCrops})
-    template_gra = np.copy(zFeat5_gra_init)
-    template_sia = np.copy(zFeat5_sia_init)
-    hid_gra = np.copy(zFeat2_gra_init)
+        winSz = opts['scoreSize'] * opts['responseUp']
+        if opts['windowing'] == 'cosine':
+            hann = np.hanning(winSz).reshape(winSz, 1)
+            window = hann.dot(hann.T)
+        elif opts['windowing'] == 'uniform':
+            window = np.ones((winSz, winSz), dtype=np.float32)
 
-    train_all = []
-    frame_all = []
-    F_max_all = 0
-    A_all = []
-    F_max_thred = 0
-    F_max = 0
-    train_all.append(xCrops0)
-    A_all.append(0)
-    frame_all.append(0)
-    updata_features = []
-    updata_features_score = []
-    updata_features_frame = []
-    no_cos = 1
-    refind = 0
+        window = window / np.sum(window)
+        scales = np.array(
+            [opts['scaleStep'] ** i for i in range(int(np.ceil(opts['numScale'] / 2.0) - opts['numScale']),
+                                                   int(np.floor(opts['numScale'] / 2.0) + 1))])
 
-    i = 0
-    my_img = yield
-    im = my_img
-    while True:
-        if i != 0:
-            if i - updata_features_frame[-1] == 9 and no_cos:
-                opts['wInfluence'] = 0
-                no_cos = 0
-            else:
-                opts['wInfluence'] = 0.25
+        '''initialization at the first frame'''
+        xCrops = makeScalePyramid(im, targetPosition, sx * scales, opts['instanceSize'], avgChans, None, opts)
+        xCrops0 = np.expand_dims(xCrops[1], 0)
+        zCrop = np.expand_dims(zCrop, axis=0)
+        zCrop0 = np.copy(zCrop)
 
-            if (im.shape[-1] == 1):
-                tmp = np.zeros([im.shape[0], im.shape[1], 3], dtype=np.float32)
-                tmp[:, :, 0] = tmp[:, :, 1] = tmp[:, :, 2] = np.squeeze(im)
-                im = tmp
+        zFeat5_gra_init, zFeat2_gra_init, zFeat5_sia_init = sess.run([zFeat5Op_gra, zFeat2Op_gra, zFeat5Op_sia],
+                                                                     feed_dict={exemplarOp_init: zCrop0,
+                                                                                instanceOp_init: xCrops0,
+                                                                                instanceOp: xCrops})
+        template_gra = np.copy(zFeat5_gra_init)
+        template_sia = np.copy(zFeat5_sia_init)
+        hid_gra = np.copy(zFeat2_gra_init)
 
-            scaledInstance = sx * scales
-            scaledTarget = np.array([targetSize * scale for scale in scales])
+        train_all = []
+        frame_all = []
+        F_max_all = 0
+        A_all = []
+        F_max_thred = 0
+        F_max = 0
+        train_all.append(xCrops0)
+        A_all.append(0)
+        frame_all.append(0)
+        updata_features = []
+        updata_features_score = []
+        updata_features_frame = []
+        no_cos = 1
+        refind = 0
 
-            xCrops = makeScalePyramid(im, targetPosition, scaledInstance, opts['instanceSize'], avgChans, None, opts)
+        i = 0
+        my_img = self.input_queue.get()
+        im = my_img
+        while not self.exit_event.is_set():
+            if i != 0:
+                if i - updata_features_frame[-1] == 9 and no_cos:
+                    opts['wInfluence'] = 0
+                    no_cos = 0
+                else:
+                    opts['wInfluence'] = 0.25
 
-            score_gra, score_sia = sess.run([scoreOp_gra, scoreOp_sia],
-                                            feed_dict={zFeat5Op_gra: template_gra,
-                                                       zFeat5Op_sia: template_sia,
-                                                       instanceOp: xCrops})
+                if (im.shape[-1] == 1):
+                    tmp = np.zeros([im.shape[0], im.shape[1], 3], dtype=np.float32)
+                    tmp[:, :, 0] = tmp[:, :, 1] = tmp[:, :, 2] = np.squeeze(im)
+                    im = tmp
 
-            newTargetPosition, newScale = trackerEval(score_sia, score_gra, round(sx), targetPosition, window, opts)
+                scaledInstance = sx * scales
+                scaledTarget = np.array([targetSize * scale for scale in scales])
 
-            targetPosition = newTargetPosition
-            sx = max(minSx, min(maxSx, (1 - opts['scaleLr']) * sx + opts['scaleLr'] * scaledInstance[newScale]))
-            F_max = np.max(score_sia)
-            targetSize = (1 - opts['scaleLr']) * targetSize + opts['scaleLr'] * scaledTarget[newScale]
-
-            if refind:
-
-                xCrops = makeScalePyramid(im, np.array([im.shape[0] / 2, im.shape[1] / 2]), scaledInstance,
-                                          opts['instanceSize'], avgChans, None,
+                xCrops = makeScalePyramid(im, targetPosition, scaledInstance, opts['instanceSize'], avgChans, None,
                                           opts)
 
                 score_gra, score_sia = sess.run([scoreOp_gra, scoreOp_sia],
                                                 feed_dict={zFeat5Op_gra: template_gra,
                                                            zFeat5Op_sia: template_sia,
                                                            instanceOp: xCrops})
-                F_max2 = np.max(score_sia)
-                F_max3 = np.max(score_gra)
-                if F_max2 > F_max and F_max3 > F_max:
-                    newTargetPosition, newScale = trackerEval(score_sia, score_gra, round(sx),
-                                                              np.array([im.shape[0] / 2, im.shape[1] / 2]), window,
-                                                              opts)
 
-                    targetPosition = newTargetPosition
-                    sx = max(minSx, min(maxSx, (1 - opts['scaleLr']) * sx + opts['scaleLr'] * scaledInstance[newScale]))
-                    F_max = np.max(score_sia)
-                    targetSize = (1 - opts['scaleLr']) * targetSize + opts['scaleLr'] * scaledTarget[newScale]
+                newTargetPosition, newScale = trackerEval(score_sia, score_gra, round(sx), targetPosition, window, opts)
 
-                refind = 0
+                targetPosition = newTargetPosition
+                sx = max(minSx, min(maxSx, (1 - opts['scaleLr']) * sx + opts['scaleLr'] * scaledInstance[newScale]))
+                F_max = np.max(score_sia)
+                targetSize = (1 - opts['scaleLr']) * targetSize + opts['scaleLr'] * scaledTarget[newScale]
 
-            '''use the average of the first five frames to set the threshold'''
-            if i < 6:
-                F_max_all = F_max_all + F_max
-            if i == 5:
-                F_max_thred = F_max_all / 5.
-        else:
-            pass
+                if refind:
 
-        '''tracking results'''
-        rectPosition = targetPosition - targetSize / 2.
-        Position_now = np.concatenate(
-            [np.round(rectPosition).astype(int)[::-1], np.round(targetSize).astype(int)[::-1]], 0)
+                    xCrops = makeScalePyramid(im, np.array([im.shape[0] / 2, im.shape[1] / 2]), scaledInstance,
+                                              opts['instanceSize'], avgChans, None,
+                                              opts)
 
-        if Position_now[0] + Position_now[2] > im.shape[1] and F_max < F_max_thred * 0.5:
-            refind = 1
+                    score_gra, score_sia = sess.run([scoreOp_gra, scoreOp_sia],
+                                                    feed_dict={zFeat5Op_gra: template_gra,
+                                                               zFeat5Op_sia: template_sia,
+                                                               instanceOp: xCrops})
+                    F_max2 = np.max(score_sia)
+                    F_max3 = np.max(score_gra)
+                    if F_max2 > F_max and F_max3 > F_max:
+                        newTargetPosition, newScale = trackerEval(score_sia, score_gra, round(sx),
+                                                                  np.array([im.shape[0] / 2, im.shape[1] / 2]), window,
+                                                                  opts)
 
-        '''save the reliable training sample'''
-        if F_max >= min(F_max_thred * 0.5, np.mean(updata_features_score)):
-            scaledInstance = sx * scales
-            xCrops = makeScalePyramid(im, targetPosition, scaledInstance, opts['instanceSize'], avgChans, None, opts)
-            updata_features.append(xCrops)
-            updata_features_score.append(F_max)
-            updata_features_frame.append(i)
-            if updata_features_score.__len__() > 5:
-                del updata_features_score[0]
-                del updata_features[0]
-                del updata_features_frame[0]
-        else:
-            if i < 10 and F_max < F_max_thred * 0.4:
+                        targetPosition = newTargetPosition
+                        sx = max(minSx,
+                                 min(maxSx, (1 - opts['scaleLr']) * sx + opts['scaleLr'] * scaledInstance[newScale]))
+                        F_max = np.max(score_sia)
+                        targetSize = (1 - opts['scaleLr']) * targetSize + opts['scaleLr'] * scaledTarget[newScale]
+
+                    refind = 0
+
+                '''use the average of the first five frames to set the threshold'''
+                if i < 6:
+                    F_max_all = F_max_all + F_max
+                if i == 5:
+                    F_max_thred = F_max_all / 5.
+            else:
+                pass
+
+            '''tracking results'''
+            rectPosition = targetPosition - targetSize / 2.
+            Position_now = np.concatenate(
+                [np.round(rectPosition).astype(int)[::-1], np.round(targetSize).astype(int)[::-1]], 0)
+
+            if Position_now[0] + Position_now[2] > im.shape[1] and F_max < F_max_thred * 0.5:
+                refind = 1
+
+            '''save the reliable training sample'''
+            if F_max >= min(F_max_thred * 0.5, np.mean(updata_features_score)):
                 scaledInstance = sx * scales
                 xCrops = makeScalePyramid(im, targetPosition, scaledInstance, opts['instanceSize'], avgChans, None,
                                           opts)
+                updata_features.append(xCrops)
+                updata_features_score.append(F_max)
+                updata_features_frame.append(i)
+                if updata_features_score.__len__() > 5:
+                    del updata_features_score[0]
+                    del updata_features[0]
+                    del updata_features_frame[0]
+            else:
+                if i < 10 and F_max < F_max_thred * 0.4:
+                    scaledInstance = sx * scales
+                    xCrops = makeScalePyramid(im, targetPosition, scaledInstance, opts['instanceSize'], avgChans, None,
+                                              opts)
+                    template_gra, zFeat2_gra = sess.run([zFeat5Op_gra, zFeat2Op_gra],
+                                                        feed_dict={zFeat2Op_init: hid_gra,
+                                                                   instanceOp_init: np.expand_dims(xCrops[1], 0)})
+                    hid_gra = np.copy(0.3 * hid_gra + 0.7 * zFeat2_gra)
+
+            '''update the template every 5 frames'''
+
+            if i % 5 == 0:
                 template_gra, zFeat2_gra = sess.run([zFeat5Op_gra, zFeat2Op_gra],
                                                     feed_dict={zFeat2Op_init: hid_gra,
-                                                               instanceOp_init: np.expand_dims(xCrops[1], 0)})
-                hid_gra = np.copy(0.3 * hid_gra + 0.7 * zFeat2_gra)
+                                                               instanceOp_init: np.expand_dims(
+                                                                   updata_features[np.argmax(updata_features_score)][1],
+                                                                   0)})
+                hid_gra = np.copy(0.4 * hid_gra + 0.6 * zFeat2_gra)
 
-        '''update the template every 5 frames'''
-
-        if i % 5 == 0:
-            template_gra, zFeat2_gra = sess.run([zFeat5Op_gra, zFeat2Op_gra],
-                                                feed_dict={zFeat2Op_init: hid_gra,
-                                                           instanceOp_init: np.expand_dims(
-                                                               updata_features[np.argmax(updata_features_score)][1],
-                                                               0)})
-            hid_gra = np.copy(0.4 * hid_gra + 0.6 * zFeat2_gra)
-
-        my_img = yield np.copy(Position_now)
-        im = my_img
-        i += 1
-
-
-def just_show():
-    tf.reset_default_graph()
-    # 设置输出信息的屏蔽级别
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    os.environ['C_CPP_MIN_LOG_LEVEL'] = '3'
-    # opts:设置字典
-    opts = getOpts(dict())
-
-    '''define input tensors and network'''
-    exemplarOp_init = tf.placeholder(tf.float32, [1, opts['exemplarSize'], opts['exemplarSize'], 3])
-    instanceOp_init = tf.placeholder(tf.float32, [1, opts['instanceSize'], opts['instanceSize'], 3])
-    instanceOp = tf.placeholder(tf.float32, [3, opts['instanceSize'], opts['instanceSize'], 3])
-    isTrainingOp = tf.convert_to_tensor(False, dtype='bool', name='is_training')
-    sn = SiameseNet()
-
-    '''build the model'''
-    # initial embedding
-    with tf.variable_scope('siamese') as scope:
-        zFeat2Op_init, zFeat5Op_init = sn.extract_gra_fea_template(exemplarOp_init, opts, isTrainingOp)
-        scoreOp_init = sn.response_map_cal(instanceOp_init, zFeat5Op_init, opts, isTrainingOp)
-    # gradient calculation
-    respSz = int(scoreOp_init.get_shape()[1])
-    respSz = [respSz, respSz]
-    respStride = 8
-    fixedLabel, instanceWeight = createLabels(respSz, opts['lossRPos'] / respStride, opts['lossRNeg'] / respStride, 1)
-    instanceWeightOp = tf.constant(instanceWeight, dtype=tf.float32)
-    yOp = tf.constant(fixedLabel, dtype=tf.float32)
-    with tf.name_scope("logistic_loss"):
-        lossOp_init = sn.loss(scoreOp_init, yOp, instanceWeightOp)
-    grad_init = tf.gradients(lossOp_init, zFeat2Op_init)
-    # template update and get score map
-    with tf.variable_scope('siamese') as scope:
-        zFeat5Op_gra, zFeat2Op_gra = sn.template_update_based_grad(zFeat2Op_init, grad_init[0], opts, isTrainingOp)
-        scope.reuse_variables()
-        zFeat5Op_sia = sn.extract_sia_fea_template(exemplarOp_init, opts, isTrainingOp)
-        scoreOp_sia = sn.response_map_cal(instanceOp, zFeat5Op_sia, opts, isTrainingOp)
-        scoreOp_gra = sn.response_map_cal(tf.expand_dims(instanceOp[1], 0), zFeat5Op_gra, opts, isTrainingOp)
-
-    '''restore pretrained network'''
-    saver = tf.train.Saver()
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    sess = tf.Session(config=config)
-    path = os.path.sep.join(
-        [os.getcwd()] + ['Model', 'Gradnet', 'Import', 'ckpt', 'base_l5_1t_49', 'model_epoch49.ckpt'])
-    saver.restore(sess, path)
-
-    '''tracking process'''
-    tem = run_siamesefc(opts, exemplarOp_init, instanceOp_init, instanceOp,
-                        zFeat2Op_gra, zFeat5Op_gra, zFeat5Op_sia, scoreOp_sia,
-                        scoreOp_gra, zFeat2Op_init, sess, display=False)
-    next(tem)
-    return tem
-
-
-if __name__ == '__main__':
-    test = just_show()
-    imgs, targetPosition, targetSize, gt = loadVideoInfo("../../../Resources/video", 'Walking2')
-    test.send((imgs[0], (targetPosition, targetSize)))
-    for i in imgs[1:]:
-        print(test.send(i))
+            self.output_queue.put((np.copy(Position_now),self.rect_color))
+            my_img = None
+            while my_img is None:
+                if self.exit_event.is_set():
+                    break
+                try:
+                    my_img = self.input_queue.get(timeout=0.5)
+                except Empty:
+                    my_img = None
+            im = my_img
+            i += 1
