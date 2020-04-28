@@ -1,3 +1,13 @@
+"""
+训练模型及跟踪部分代码来源
+@InProceedings{GradNet_ICCV2019,
+author = {Peixia Li, Boyu Chen, Wanli Ouyang, Dong Wang, Xiaoyun Yang, Huchuan Lu},
+title = {GradNet: Gradient-Guided Network for Visual Object Tracking},
+booktitle = {ICCV},
+month = {October},
+year = {2019}
+}
+"""
 from multiprocessing import Process
 from queue import Empty
 
