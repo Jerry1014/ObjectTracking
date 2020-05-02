@@ -1,4 +1,5 @@
 from configparser import ConfigParser
+import numpy as np
 
 from PySide2 import QtWidgets
 from PySide2.QtCharts import QtCharts
@@ -28,8 +29,10 @@ class TrackingWin(QtWidgets.QWidget):
         self.slider.setRange(0, slider_max_num)
 
         # 布局
+        self.img_layout = QtWidgets.QHBoxLayout()
+        self.img_layout.addWidget(self.image_win)
         self.layout = QtWidgets.QVBoxLayout()
-        self.layout.addWidget(self.image_win)
+        self.layout.addLayout(self.img_layout)
         self.layout.addWidget(self.button)
         self.layout.addWidget(self.slider)
         self.setLayout(self.layout)
@@ -47,6 +50,8 @@ class TrackingWin(QtWidgets.QWidget):
         self.model_state = 0
         self.benckmart_list = None
         self.benckmart_color_series_set = dict()
+        self.score_map_win = None
+        self.score_map_win_label = None
         self.settings.if_tracking = True
 
     @Slot()
@@ -101,17 +106,21 @@ class TrackingWin(QtWidgets.QWidget):
     def set_frame(self, frame_data):
         frame, cur_frame_num = frame_data.frame
         benckmark = frame_data.benckmark
+        score_map_list = frame_data.score_map_list
         if type(frame) == str:
             self.image_win.setText(frame)
         else:
             h, w, ch = frame.shape
             tem_pixmap = QPixmap.fromImage(QImage(frame, w, h, ch * w, QImage.Format_RGB888))
-            if tem_pixmap.size().toTuple() != self.image_win.size():
-                tem_pixmap.scaled(self.image_win.size())
+            # fixme
+            # if tem_pixmap.size().toTuple() != self.image_win.size().toTuple():
+            #     tem_pixmap = tem_pixmap.scaled(*self.image_win.size().toTuple())
             self.image_win.setPixmap(tem_pixmap)
             self.slider.blockSignals(True)
             self.slider.setValue(cur_frame_num)
             self.slider.blockSignals(False)
+            # 先设置成绩热图，否则模型评价宽度会出现错误
+            self.set_score_map(score_map_list)
             self.set_benckmark(cur_frame_num, benckmark)
         if self.model_state == 0:
             # 未选择跟踪目标
@@ -123,6 +132,35 @@ class TrackingWin(QtWidgets.QWidget):
             self.button.clicked.connect(self.pause_tracking)
             self.button.click()
         self.image_win.needed_paint_rect_list = frame_data.model_result
+
+    def set_score_map(self,score_map_list):
+        @Slot()
+        def change_combox(index):
+            self.score_map_win_label = index
+
+        if score_map_list:
+            if self.score_map_win is None:
+                self.score_map_win_label = 0
+                new_combobox = QtWidgets.QComboBox()
+                new_combobox.currentIndexChanged.connect(change_combox)
+                self.score_map_win = QtWidgets.QLabel()
+                self.score_map_win.setFixedSize(200,200)
+                for model_name,_ in score_map_list:
+                    new_combobox.addItem(model_name)
+                new_layout = QtWidgets.QVBoxLayout()
+                new_layout.addWidget(self.score_map_win)
+                new_layout.addWidget(new_combobox)
+                self.img_layout.addLayout(new_layout)
+
+            model_name, score_map = score_map_list[self.score_map_win_label]
+            if score_map is not None:
+                h, w, ch = score_map.shape
+                tem_pixmap = QPixmap.fromImage(QImage(score_map, w, h, ch * w, QImage.Format_RGB888))
+                if tem_pixmap.size().toTuple() != self.score_map_win.size().toTuple():
+                    tem_pixmap = tem_pixmap.scaled(*self.score_map_win.size().toTuple())
+                self.score_map_win.setPixmap(tem_pixmap)
+            else:
+                self.score_map_win.setText('当前模型无score map')
 
     def set_benckmark(self, x, benckmark_list):
         if benckmark_list:
@@ -162,6 +200,9 @@ class TrackingWin(QtWidgets.QWidget):
                     chart_view.chart().removeSeries(data_series)
                     chart_view.chart().addSeries(data_series)
                 chart_view.chart().createDefaultAxes()
+
+
+
 
     def closeEvent(self, event):
         self.after_close_tracking_signal.emit()

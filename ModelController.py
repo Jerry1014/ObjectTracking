@@ -123,7 +123,7 @@ class ModelController(QRunnable):
 
                     while time() - last_emit_frame_time[index] < 0.03:
                         sleep(0.01)
-                    new_frame_config = FrameData(index, frame, result_rect_list, benckmark_list)
+                    new_frame_config = FrameData(index, frame, result_rect_list, benckmark_list, score_map_list)
                     try:
                         self.emit_frame_signal.emit(new_frame_config)
                     except RuntimeError:
@@ -142,6 +142,9 @@ class ModelController(QRunnable):
         cf = ConfigParser()
         cf.read('./Model/ModelConfig.ini')
         for i in model_name_list.keys():
+            # 当前模型控制类使用多线程，为了给界面进程一点时间，避免无响应
+            sleep(0.1)
+
             path = cf[i]['path']
             if path not in sys.path:
                 path = sep.join([getcwd(), 'Model'] + path.split(' '))

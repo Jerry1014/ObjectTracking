@@ -33,7 +33,7 @@ class ModelBaseWithMultiProcess(Process):
     def run(self) -> None:
         while True:
             try:
-                self.output_queue.put((self.get_tracking_result(self.input_queue.get(timeout=1)), self.color))
+                self.output_queue.put(self.get_tracking_result(self.input_queue.get(timeout=1)))
             except Empty:
                 pass
             except Exception as e:

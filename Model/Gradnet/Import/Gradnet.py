@@ -17,6 +17,7 @@ import cv2
 import numpy as np
 from Model.Gradnet.Import.siamese import SiameseNet
 
+
 def getOpts(opts):
     opts['numScale'] = 3
     opts['scaleStep'] = 1.04
@@ -266,6 +267,8 @@ class Gradnet(Process):
         self.rect_color = rect_color
         self.exit_event = exit_event
 
+        self.model_name = 'Gradnet'
+
     def run(self) -> None:
         tf.reset_default_graph()
         # 设置输出信息的屏蔽级别
@@ -489,11 +492,20 @@ class Gradnet(Process):
                                                                    0)})
                 hid_gra = np.copy(0.4 * hid_gra + 0.6 * zFeat2_gra)
 
-            if score_gra:
-                score_map = np.squeeze(score_gra)
+            if score_gra is not None:
+                # fixme 处理得太简陋了
+                score_map = score_gra.reshape((17, 17, 1))
+                # score_map = np.maximum(score_map, 0)
+                score_map = score_map - np.min(score_map)
+                score_map = score_map * (255 / np.max(score_map))
+
+                zeros_map = np.zeros(score_map.shape)
+                score_map = np.concatenate((zeros_map, score_map, zeros_map), axis=2)
+                score_map = score_map.astype(np.uint8)
+                # score_map = score_map.reshape(list(score_map.shape)+[3])
             else:
                 score_map = None
-            self.output_queue.put(((np.copy(Position_now),self.rect_color),score_map))
+            self.output_queue.put(((np.copy(Position_now), self.rect_color), (self.model_name, score_map)))
             my_img = None
             while my_img is None:
                 if self.exit_event.is_set():
