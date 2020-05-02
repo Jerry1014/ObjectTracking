@@ -162,7 +162,6 @@ class MonitoringSubInterface(QtWidgets.QWidget):
 
 
 class MonitoringSubInterfaceLabel(QtWidgets.QLabel):
-    # 缩放比例不能随视频分辨率调整，不够ok
     scale_value = 5000
     step_each_angle = None
     min_rect = (100, 100)
@@ -207,5 +206,6 @@ class MonitoringSubInterfaceLabel(QtWidgets.QLabel):
         new_image = image[rect[1]:rect[1] + rect[3], rect[0]:rect[0] + rect[2]].copy(order='C')
         h, w, ch = new_image.shape
         tem_pixmap = QPixmap.fromImage(QImage(new_image, w, h, ch * w, QImage.Format_RGB888))
-        tem_pixmap = tem_pixmap.scaled(*self.max_rect)
+        if tem_pixmap.size().toTuple() != self.size().toTuple():
+            tem_pixmap = tem_pixmap.scaled(*self.max_rect)
         self.setPixmap(tem_pixmap)

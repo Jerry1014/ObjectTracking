@@ -106,7 +106,8 @@ class TrackingWin(QtWidgets.QWidget):
         else:
             h, w, ch = frame.shape
             tem_pixmap = QPixmap.fromImage(QImage(frame, w, h, ch * w, QImage.Format_RGB888))
-            tem_pixmap.scaled(self.image_win.size())
+            if tem_pixmap.size().toTuple() != self.image_win.size():
+                tem_pixmap.scaled(self.image_win.size())
             self.image_win.setPixmap(tem_pixmap)
             self.slider.blockSignals(True)
             self.slider.setValue(cur_frame_num)
