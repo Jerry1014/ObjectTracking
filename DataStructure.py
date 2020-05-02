@@ -15,8 +15,9 @@ class MonitorConfig:
 
 
 class FrameData:
-    def __init__(self, index, frame, model_result, benckmark):
+    def __init__(self, index, frame, model_result, benckmark, score_map_list):
         self.index = index
         self.frame = frame
         self.model_result = model_result
         self.benckmark = benckmark
+        self.score_map_list = score_map_list

@@ -40,21 +40,6 @@ def getOpts(opts):
     return opts
 
 
-def frameGenerator(vpath):
-    imgs = []
-    included_extenstions = ['jpg', 'jpeg', 'png', 'bmp', 'gif']
-    imgFiles = [fn for fn in os.listdir(vpath)
-                if any(fn.endswith(ext) for ext in included_extenstions)]
-    imgFiles.sort()
-
-    for imgFile in imgFiles:
-        img_path = os.path.join(vpath, imgFile)
-        img = cv2.imread(img_path, cv2.IMREAD_COLOR)
-        imgs.append(img)
-
-    return imgs
-
-
 def region_to_bbox(region, center=True):
     n = len(region)
     if n == 4:
@@ -75,41 +60,6 @@ def _rect(region, center):
         # region[0] -= 1
         # region[1] -= 1
         return region
-
-
-def loadVideoInfo(basePath, video):
-    videoPath = os.path.join(basePath, video, 'img')
-    if video == 'Human4' or video == 'Human4-2':
-        groundTruthFile = os.path.join(basePath, video, 'groundtruth_rect.2.txt')
-    elif video == 'Jogging-1' or video == 'Skating2-1':
-        groundTruthFile = os.path.join(basePath, video, 'groundtruth_rect.1.txt')
-    elif video == 'Jogging-2' or video == 'Skating2-2':
-        groundTruthFile = os.path.join(basePath, video, 'groundtruth_rect.2.txt')
-    else:
-        groundTruthFile = os.path.join(basePath, video, 'groundtruth_rect.txt')
-    # groundTruthFile = os.path.join(basePath, video, video + '_gt.txt')
-    with open(groundTruthFile) as f:
-        gt = np.loadtxt(x.replace(',', ' ') for x in f)
-
-    groundTruth = open(groundTruthFile, 'r')
-    reader = groundTruth.readline()
-    cx, cy, w, h = region_to_bbox(gt[0])
-    # cx, cy, w, h = getAxisAlignedBB(region)
-    pos = [cy, cx]
-    targetSz = [h, w]
-
-    imgs = frameGenerator(videoPath)
-    if video == 'David':
-        imgs = imgs[299:]
-    # elif video=='Tiger2':
-    #     imgs = imgs[6:]
-    #     gt = gt[6:]
-    elif not imgs.__len__() == gt.shape[0]:
-        a = gt.shape[0]
-        imgs = imgs[:a]
-    # pdb.set_trace()
-    assert imgs.__len__() == gt.shape[0]
-    return imgs, np.array(pos), np.array(targetSz), gt
 
 
 def createLogLossLabel(labelSize, rPos, rNeg):
@@ -435,6 +385,7 @@ class Gradnet(Process):
         my_img = self.input_queue.get()
         im = my_img
         while not self.exit_event.is_set():
+            score_gra = None
             if i != 0:
                 if i - updata_features_frame[-1] == 9 and no_cos:
                     opts['wInfluence'] = 0
@@ -538,7 +489,11 @@ class Gradnet(Process):
                                                                    0)})
                 hid_gra = np.copy(0.4 * hid_gra + 0.6 * zFeat2_gra)
 
-            self.output_queue.put((np.copy(Position_now),self.rect_color))
+            if score_gra:
+                score_map = np.squeeze(score_gra)
+            else:
+                score_map = None
+            self.output_queue.put(((np.copy(Position_now),self.rect_color),score_map))
             my_img = None
             while my_img is None:
                 if self.exit_event.is_set():

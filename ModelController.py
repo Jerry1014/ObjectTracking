@@ -94,6 +94,7 @@ class ModelController(QRunnable):
                     except EndOfVideoError:
                         frame = ('视频已结束', None)
                     result_rect_list = list()
+                    score_map_list = list()
                     benckmark_list = None
                     if self.settings.if_tracking:
                         # 取模型结果
@@ -103,7 +104,9 @@ class ModelController(QRunnable):
                                 i.put(frame[0])
                             # 取回模型结果
                             for i in self.model_output_queue_list:
-                                result_rect_list.append(i.get())
+                                tem_model_result = i.get()
+                                result_rect_list.append(tem_model_result[0])
+                                score_map_list.append((tem_model_result[1]))
 
                         if self.video_gt_list[index] and frame[1]:
                             gt = self.video_gt_list[index][frame[1]]

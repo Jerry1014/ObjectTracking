@@ -42,7 +42,7 @@ class SPLTImport(QRunnable):
                 frame = self.input_queue.get(timeout=0.5)
                 frame = cvtColor(frame, COLOR_RGB2BGR)
                 track_result = self.tracker.track(frame)[0]
-                self.output_queue.put((track_result, self.rect_color))
+                self.output_queue.put(((track_result, self.rect_color),None))
             except Empty:
                 if self.exit_event.is_set():
                     break
