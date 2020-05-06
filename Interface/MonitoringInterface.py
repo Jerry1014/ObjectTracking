@@ -207,5 +207,5 @@ class MonitoringSubInterfaceLabel(QtWidgets.QLabel):
         h, w, ch = new_image.shape
         tem_pixmap = QPixmap.fromImage(QImage(new_image, w, h, ch * w, QImage.Format_RGB888))
         if tem_pixmap.size().toTuple() != self.size().toTuple():
-            tem_pixmap = tem_pixmap.scaled(*self.max_rect)
+            tem_pixmap = tem_pixmap.scaled(self.size())
         self.setPixmap(tem_pixmap)
