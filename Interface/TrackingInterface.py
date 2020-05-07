@@ -132,7 +132,7 @@ class TrackingWin(QtWidgets.QWidget):
             self.button.click()
         self.image_win.needed_paint_rect_list = frame_data.model_result
 
-    def set_score_map(self,score_map_list):
+    def set_score_map(self, score_map_list):
         @Slot()
         def change_combox(index):
             self.score_map_win_label = index
@@ -143,8 +143,8 @@ class TrackingWin(QtWidgets.QWidget):
                 new_combobox = QtWidgets.QComboBox()
                 new_combobox.currentIndexChanged.connect(change_combox)
                 self.score_map_win = QtWidgets.QLabel()
-                self.score_map_win.setFixedSize(200,200)
-                for model_name,_ in score_map_list:
+                self.score_map_win.setFixedSize(self.image_win.size())
+                for model_name, _ in score_map_list:
                     new_combobox.addItem(model_name)
                 new_layout = QtWidgets.QVBoxLayout()
                 new_layout.addWidget(self.score_map_win)
@@ -168,8 +168,8 @@ class TrackingWin(QtWidgets.QWidget):
                 self.benckmart_list = list()
                 for benckmart in benckmark_list:
                     new_widget = QtCharts.QChartView()
-                    width = self.size().toTuple()[0]
-                    new_widget.setFixedSize(width, width / 2)
+                    height = self.size().toTuple()[1]
+                    new_widget.setFixedHeight(height/2)
                     new_widget.chart().setTitle(benckmart[0])
                     self.layout.addWidget(new_widget)
                     color_data_series = dict()
@@ -179,8 +179,6 @@ class TrackingWin(QtWidgets.QWidget):
                         new_data_series.setPen(QPen(model_result[1]))
                         new_widget.chart().addSeries(new_data_series)
                         color_data_series[model_result[1]] = [new_data_series, model_result[0]]
-                self.setLayout(self.layout)
-                self.repaint()
 
             # 添加点
             for benckmart, chart_view_and_data_series_set in zip(benckmark_list, self.benckmart_list):
@@ -199,9 +197,6 @@ class TrackingWin(QtWidgets.QWidget):
                     chart_view.chart().removeSeries(data_series)
                     chart_view.chart().addSeries(data_series)
                 chart_view.chart().createDefaultAxes()
-
-
-
 
     def closeEvent(self, event):
         self.after_close_tracking_signal.emit()
