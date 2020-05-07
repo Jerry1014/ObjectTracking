@@ -5,7 +5,7 @@ from time import sleep
 
 from PySide2 import QtWidgets
 from PySide2.QtCore import Slot, Qt, Signal
-from PySide2.QtGui import QPixmap, QImage, QWheelEvent
+from PySide2.QtGui import QPixmap, QImage, QWheelEvent, QMouseEvent
 
 from DataStructure import FrameData
 from Interface.TrackingInterface import TrackingWin
@@ -162,7 +162,9 @@ class MonitoringSubInterface(QtWidgets.QWidget):
 
 
 class MonitoringSubInterfaceLabel(QtWidgets.QLabel):
+    # scale_value越大缩放越慢 mouse_value越大，鼠标拖动越快
     scale_value = 5000
+    mouse_value = 0.05
     step_each_angle = None
     min_rect = (100, 100)
 
@@ -173,6 +175,7 @@ class MonitoringSubInterfaceLabel(QtWidgets.QLabel):
         self.setFixedSize(*max_rect)
         self.cur_pos_rect = [0, 0, *max_rect]
         self.last_frame = None
+        self.start_pos = None
 
     def wheelEvent(self, event: QWheelEvent):
         step_w = -event.angleDelta().y() * self.step_each_angle
@@ -195,7 +198,27 @@ class MonitoringSubInterfaceLabel(QtWidgets.QLabel):
             tem_w = max(tem_w, self.min_rect[0])
             tem_h = max(tem_h, self.min_rect[1])
 
-        self.cur_pos_rect = (tem_x, tem_y, tem_w, tem_h)
+        self.cur_pos_rect = [tem_x, tem_y, tem_w, tem_h]
+        if self.last_frame is not None:
+            self.set_image(self.last_frame)
+
+    def mousePressEvent(self, ev: QMouseEvent):
+        self.start_pos = ev.localPos().toTuple()
+
+    def mouseMoveEvent(self, ev: QMouseEvent):
+        end_pos = ev.localPos().toTuple()
+        step_x, step_y = [end - start for end, start in zip(end_pos, self.start_pos)]
+        scale_num = self.mouse_value * self.cur_pos_rect[2]/self.max_rect[0]
+        new_x = self.cur_pos_rect[0] - step_x * scale_num
+        new_y = self.cur_pos_rect[1] - step_y * scale_num
+        if new_x > 0:
+            self.cur_pos_rect[0] = min(new_x, self.max_rect[0] - self.cur_pos_rect[2])
+        else:
+            self.cur_pos_rect[0] = max(new_x, 0)
+        if new_y > 0:
+            self.cur_pos_rect[1] = min(new_y, self.max_rect[1] - self.cur_pos_rect[3])
+        else:
+            self.cur_pos_rect[1] = max(new_y, 0)
         if self.last_frame is not None:
             self.set_image(self.last_frame)
 
