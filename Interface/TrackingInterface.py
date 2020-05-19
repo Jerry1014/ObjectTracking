@@ -1,5 +1,4 @@
 from configparser import ConfigParser
-from copy import deepcopy
 
 import numpy as np
 
@@ -26,8 +25,7 @@ class TrackingWin(QtWidgets.QWidget):
 
         # 部件
         self.image_win = MyImageLabel(self.after_tracking_signal)
-        self.button = QtWidgets.QPushButton('请用鼠标选择跟踪对象')
-        self.button.setEnabled(False)
+        self.button = QtWidgets.QPushButton('请用鼠标选择跟踪对象，点击按钮直接使用上次的跟踪对象')
         self.re_init_button = QtWidgets.QPushButton('重新初始化')
         self.re_init_button.setVisible(False)
         self.slider = QtWidgets.QSlider(Qt.Horizontal)
@@ -55,6 +53,7 @@ class TrackingWin(QtWidgets.QWidget):
         self.change_play_state_signal.connect(change_play_state_slot)
         self.restart_tracking_signal.connect(start_tracking_slot)
         self.re_init_button.clicked.connect(self.re_init_model)
+        self.button.clicked.connect(self.tracking_last_object)
 
         # 其他
         self.sub_win = None
@@ -66,6 +65,16 @@ class TrackingWin(QtWidgets.QWidget):
         self.settings.if_tracking = True
         self.play_state = False
         self.last_frame = None
+
+    @Slot()
+    def tracking_last_object(self):
+        if self.settings.tracking_object_rect is not None and self.settings.last_frame is not None:
+            self.image_win.if_paint_mouse = False
+            self.image_win.mouse_press_rect = self.settings.tracking_object_rect
+            self.settings.first_frame = self.settings.last_frame
+            self.after_tracking_signal.emit()
+        else:
+            self._show_msg('无上次跟踪记录，请重新选取跟踪对象')
 
     @Slot()
     def after_tracking(self):
@@ -89,10 +98,13 @@ class TrackingWin(QtWidgets.QWidget):
 
             self.slider.setEnabled(False)
             self.settings.tracking_object_rect = self.image_win.mouse_press_rect
+            self.settings.last_frame = self.settings.first_frame
             self.image_win.if_paint_mouse = False
 
     @Slot()
     def after_choose_model(self):
+        self.button.setEnabled(False)
+        self.button.clicked.disconnect(self.tracking_last_object)
         self.button.setText('模型载入中')
         all_data = self.sub_win.get_all_data()
         self.sub_win = None

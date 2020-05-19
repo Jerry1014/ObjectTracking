@@ -22,6 +22,7 @@ class Settings:
         self.if_end = False
         self.total_frame_num = None
         self.first_frame: ndarray = None
+        self.last_frame: ndarray = None
         self.tracking_object_rect = None
         self.monitor_config_list = None
         self.monitor_play_state = list()
@@ -32,6 +33,10 @@ class Settings:
     def get_image_from_first_frame_by_rect(self, rect):
         rect = [int(i) for i in rect]
         return self.first_frame[rect[1]:rect[1] + rect[3], rect[0]:rect[0] + rect[2]].copy(order='C')
+
+    def get_image_from_last_frame_by_rect(self):
+        return self.last_frame[self.tracking_object_rect[1]:self.tracking_object_rect[1] + self.tracking_object_rect[3],
+               self.tracking_object_rect[0]:self.tracking_object_rect[0] + self.tracking_object_rect[2]].copy(order='C')
 
     def get_model_color(self, model_class):
         return self.model_color_dict.get(model_class, 'black')
