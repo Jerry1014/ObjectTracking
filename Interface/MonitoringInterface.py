@@ -68,7 +68,8 @@ class MonitoringInterface(QtWidgets.QWidget):
             if state:
                 self.monitor_list[enu_index].button_event()
         self.sub_win = TrackingWin(index, self.settings, self.model_init_signal, self.change_play_process,
-                                   self.after_close_tracking, self.change_play_state, slider_max_num)
+                                   self.after_close_tracking, self.change_play_state, slider_max_num,
+                                   self.start_tracking)
         self.change_play_process(index, slider_value)
         self.sub_win.show()
         self.sub_win.activateWindow()
@@ -208,7 +209,7 @@ class MonitoringSubInterfaceLabel(QtWidgets.QLabel):
     def mouseMoveEvent(self, ev: QMouseEvent):
         end_pos = ev.localPos().toTuple()
         step_x, step_y = [end - start for end, start in zip(end_pos, self.start_pos)]
-        scale_num = self.mouse_value * self.cur_pos_rect[2]/self.max_rect[0]
+        scale_num = self.mouse_value * self.cur_pos_rect[2] / self.max_rect[0]
         new_x = self.cur_pos_rect[0] - step_x * scale_num
         new_y = self.cur_pos_rect[1] - step_y * scale_num
         if new_x > 0:

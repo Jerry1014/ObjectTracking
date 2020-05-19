@@ -1,4 +1,6 @@
 from configparser import ConfigParser
+from copy import deepcopy
+
 import numpy as np
 
 from PySide2 import QtWidgets
@@ -13,9 +15,10 @@ class TrackingWin(QtWidgets.QWidget):
     change_play_process_signal = Signal(int, int)
     after_close_tracking_signal = Signal()
     change_play_state_signal = Signal(int)
+    restart_tracking_signal = Signal(tuple)
 
     def __init__(self, index, settings, model_init_signal, change_play_process_slot, after_close_tracking_slot,
-                 change_play_state_slot, slider_max_num):
+                 change_play_state_slot, slider_max_num, start_tracking_slot):
         super().__init__()
         self.setWindowTitle('目标跟踪')
         self.index = index
@@ -25,7 +28,10 @@ class TrackingWin(QtWidgets.QWidget):
         self.image_win = MyImageLabel(self.after_tracking_signal)
         self.button = QtWidgets.QPushButton('请用鼠标选择跟踪对象')
         self.button.setEnabled(False)
+        self.re_init_button = QtWidgets.QPushButton('重新初始化')
+        self.re_init_button.setVisible(False)
         self.slider = QtWidgets.QSlider(Qt.Horizontal)
+        self.slider_max_num = slider_max_num
         self.slider.setRange(0, slider_max_num)
 
         # 布局
@@ -33,7 +39,10 @@ class TrackingWin(QtWidgets.QWidget):
         self.img_layout.addWidget(self.image_win)
         self.layout = QtWidgets.QVBoxLayout()
         self.layout.addLayout(self.img_layout)
-        self.layout.addWidget(self.button)
+        self.button_layout = QtWidgets.QHBoxLayout()
+        self.button_layout.addWidget(self.button)
+        self.button_layout.addWidget(self.re_init_button)
+        self.layout.addLayout(self.button_layout)
         self.layout.addWidget(self.slider)
         self.setLayout(self.layout)
 
@@ -44,6 +53,8 @@ class TrackingWin(QtWidgets.QWidget):
         self.change_play_process_signal.connect(change_play_process_slot)
         self.after_close_tracking_signal.connect(after_close_tracking_slot)
         self.change_play_state_signal.connect(change_play_state_slot)
+        self.restart_tracking_signal.connect(start_tracking_slot)
+        self.re_init_button.clicked.connect(self.re_init_model)
 
         # 其他
         self.sub_win = None
@@ -53,6 +64,8 @@ class TrackingWin(QtWidgets.QWidget):
         self.score_map_win = None
         self.score_map_win_label = None
         self.settings.if_tracking = True
+        self.play_state = False
+        self.last_frame = None
 
     @Slot()
     def after_tracking(self):
@@ -85,8 +98,12 @@ class TrackingWin(QtWidgets.QWidget):
         self.sub_win = None
         self.model_init_signal.emit(all_data)
         self.model_state = 1
-        self.repaint()
         self.change_play_state_signal.emit(self.index)
+
+    @Slot()
+    def re_init_model(self):
+        self.close()
+        self.restart_tracking_signal.emit((self.index, self.last_frame, self.slider.value(), self.slider_max_num))
 
     @Slot()
     def change_play_process_event(self, value):
@@ -107,20 +124,24 @@ class TrackingWin(QtWidgets.QWidget):
         frame, cur_frame_num = frame_data.frame
         benckmark = frame_data.benckmark
         score_map_list = frame_data.score_map_list
+        self.last_frame = frame
         if type(frame) == str:
             self.image_win.setText(frame)
         else:
             h, w, ch = frame.shape
             tem_pixmap = QPixmap.fromImage(QImage(frame, w, h, ch * w, QImage.Format_RGB888))
-            if tem_pixmap.size().toTuple() != self.image_win.size().toTuple() and self.model_state != 0:
-                tem_pixmap = tem_pixmap.scaled(*self.image_win.size().toTuple())
+            if tem_pixmap.size().toTuple() != self.image_win.size().toTuple():
+                if self.model_state != 0:
+                    tem_pixmap = tem_pixmap.scaled(*self.image_win.size().toTuple())
+                else:
+                    self.image_win.setFixedSize(tem_pixmap.size())
             self.image_win.setPixmap(tem_pixmap)
             self.slider.blockSignals(True)
             self.slider.setValue(cur_frame_num)
             self.slider.blockSignals(False)
-            # 先设置成绩热图，否则模型评价宽度会出现错误
-            self.set_score_map(score_map_list)
-            self.set_benckmark(cur_frame_num, benckmark)
+            if self.model_state == 2:
+                self.set_score_map(score_map_list)
+                self.set_benckmark(cur_frame_num, benckmark)
         if self.model_state == 0:
             # 未选择跟踪目标
             self.settings.first_frame = frame
@@ -130,6 +151,7 @@ class TrackingWin(QtWidgets.QWidget):
             self.button.setEnabled(True)
             self.button.clicked.connect(self.pause_tracking)
             self.button.click()
+            self.re_init_button.setVisible(True)
         self.image_win.needed_paint_rect_list = frame_data.model_result
 
     def set_score_map(self, score_map_list):
@@ -207,6 +229,7 @@ class TrackingWin(QtWidgets.QWidget):
         self.button.clicked.disconnect(self.pause_tracking)
         self.button.clicked.connect(self.start_tracking)
         self.change_play_state_signal.emit(self.index)
+        self.play_state = False
 
     @Slot()
     def start_tracking(self):
@@ -217,6 +240,7 @@ class TrackingWin(QtWidgets.QWidget):
         self.button.clicked.disconnect(self.start_tracking)
         self.button.clicked.connect(self.pause_tracking)
         self.change_play_state_signal.emit(self.index)
+        self.play_state = True
 
 
 class MyImageLabel(QtWidgets.QLabel):
