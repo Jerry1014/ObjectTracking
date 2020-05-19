@@ -9,6 +9,7 @@ from PySide2.QtGui import QPixmap, QImage, QWheelEvent, QMouseEvent
 
 from DataStructure import FrameData
 from Interface.TrackingInterface import TrackingWin
+from User.User import User, UserException
 
 
 class MonitoringInterface(QtWidgets.QWidget):
@@ -22,6 +23,7 @@ class MonitoringInterface(QtWidgets.QWidget):
         self.settings.frame_update_signal = self.frame_update_signal
         self.setWindowTitle('监控界面')
         self.play_state = self.settings.monitor_play_state
+        self.user = User()
 
         # 等待控制模块读取监控配置文件
         while self.settings.monitor_config_list is None:
@@ -30,17 +32,20 @@ class MonitoringInterface(QtWidgets.QWidget):
             self.play_state.append(True)
 
         # 布局
+        self.layout = QtWidgets.QGridLayout()
+        self.user_interface = UserInterface(self.user)
+        self.layout.addWidget(self.user_interface, 1, 1)
+
         column_number = 1
         while column_number ** 2 < len(self.settings.monitor_config_list):
             column_number += 1
         self.monitor_list = list()
-        self.layout = QtWidgets.QGridLayout()
         for i, config in enumerate(self.settings.monitor_config_list):
             # 是否需要传入更多的信息
             monitor = MonitoringSubInterface(i, config, self.settings.each_monitor_rect, self.change_play_state,
                                              self.change_play_process, self.start_tracking)
             self.monitor_list.append(monitor)
-            self.layout.addWidget(monitor, i // column_number + 1, i % column_number + 1)
+            self.layout.addWidget(monitor, (i + 1) // column_number + 1, (i + 1) % column_number + 1)
         self.setLayout(self.layout)
 
         # 其他
@@ -233,3 +238,65 @@ class MonitoringSubInterfaceLabel(QtWidgets.QLabel):
         if tem_pixmap.size().toTuple() != self.size().toTuple():
             tem_pixmap = tem_pixmap.scaled(self.size())
         self.setPixmap(tem_pixmap)
+
+
+class UserInterface(QtWidgets.QWidget):
+    def __init__(self, user):
+        super().__init__()
+        self.user = user
+        if self.user.user_psw:
+            self.user_dialog = UserDialog(self.user)
+        else:
+            self.user_dialog = UserDialog(self.user, '注册')
+        self.user_dialog.show()
+        self.user_dialog.exec_()
+
+        # 部件
+        self.user_name_label = QtWidgets.QLabel('用户: '+self.user.user_name)
+
+        self.layout = QtWidgets.QVBoxLayout()
+        self.layout.addWidget(self.user_name_label)
+        self.setLayout(self.layout)
+
+
+class UserDialog(QtWidgets.QDialog):
+    def __init__(self, user, method='登录', user_name=None):
+        super().__init__(None)
+        self.setWindowTitle(method)
+        self.user = user
+        self.method = method
+
+        self.user_name_edit = QtWidgets.QLineEdit()
+        if method == '修改密码':
+            self.user_name_edit.setText(user_name)
+            self.user_name_edit.setEnabled(False)
+        else:
+            self.user_name_edit.setPlaceholderText('请输入用户名')
+        self.psw_edit = QtWidgets.QLineEdit()
+        self.psw_edit.setPlaceholderText('请输入密码')
+        self.psw_edit.setEchoMode(QtWidgets.QLineEdit.PasswordEchoOnEdit)
+
+        self.button = QtWidgets.QPushButton(method)
+        self.button.clicked.connect(self.button_event)
+
+        self.layout = QtWidgets.QVBoxLayout()
+        self.layout.addWidget(self.user_name_edit)
+        self.layout.addWidget(self.psw_edit)
+        self.layout.addWidget(self.button)
+        self.setLayout(self.layout)
+
+    def button_event(self):
+        if self.method == '注册':
+            self.user.sign_in(self.user_name_edit.text(), self.psw_edit.text())
+        elif self.method == '修改密码':
+            self.user.change_psw(self.psw_edit.text())
+        else:
+            try:
+                self.user.login(self.user_name_edit.text(), self.psw_edit.text())
+            except UserException as e:
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setWindowTitle('错误')
+                msg_box.setText(str(e))
+                msg_box.exec_()
+                return
+        self.close()
