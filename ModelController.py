@@ -37,8 +37,8 @@ class ModelController(QRunnable):
         video_config.read('./Resources/MonitoringConfig.ini')
         monitor_config_list = list()
 
-        max_video_width = 0
-        max_video_height = 0
+        min_video_width = 1000
+        min_video_height = 1000
         if video_config:
             for i in video_config.sections():
                 tem_config = video_config[i]
@@ -47,10 +47,10 @@ class ModelController(QRunnable):
                 tem_path_dir = ['.', 'Resources', 'video'] + tem_path_list[:-1]
                 tem_video_reader.init(sep.join(tem_path_dir + [tem_path_list[-1]]))
                 tem_w, tem_h = tem_video_reader.get_frame_shape()
-                if tem_w > max_video_width:
-                    max_video_width = tem_w
-                if tem_h > max_video_height:
-                    max_video_height = tem_h
+                if tem_w < min_video_width:
+                    min_video_width = tem_w
+                if tem_h < min_video_height:
+                    min_video_height = tem_h
                 tem_monitor_config = MonitorConfig(tem_config['name'], tem_video_reader.get_frame_total_num())
                 self.video_reader_list.append(tem_video_reader)
                 monitor_config_list.append(tem_monitor_config)
@@ -70,7 +70,7 @@ class ModelController(QRunnable):
             print('监控初始化失败，请检查配置文件')
             exit()
         self.settings.monitor_config_list = monitor_config_list
-        self.settings.each_monitor_rect = (max_video_width, max_video_height)
+        self.settings.each_monitor_rect = (min_video_width, min_video_height)
 
         # 新线程启动界面
         while self.settings.frame_update_signal is None:

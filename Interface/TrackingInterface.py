@@ -96,6 +96,7 @@ class TrackingWin(QtWidgets.QWidget):
             model_choose_win.activateWindow()
             self.sub_win = model_choose_win
 
+            self.button.setEnabled(False)
             self.slider.setEnabled(False)
             self.settings.tracking_object_rect = self.image_win.mouse_press_rect
             self.settings.last_frame = self.settings.first_frame
@@ -103,7 +104,6 @@ class TrackingWin(QtWidgets.QWidget):
 
     @Slot()
     def after_choose_model(self):
-        self.button.setEnabled(False)
         self.button.clicked.disconnect(self.tracking_last_object)
         self.button.setText('模型载入中')
         all_data = self.sub_win.get_all_data()

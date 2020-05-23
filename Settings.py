@@ -19,8 +19,8 @@ class Settings:
         self.model_color_dict = None
 
         # 在组件中传递的标记
-        self.if_end = False
         self.total_frame_num = None
+        self.if_end = False
         self.first_frame: ndarray = None
         self.last_frame: ndarray = None
         self.tracking_object_rect = None
