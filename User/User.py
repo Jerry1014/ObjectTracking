@@ -69,6 +69,6 @@ class User:
         with open(self.record_filename, 'r') as f:
             return f.readlines()
 
-    def delect_user(self, user_name):
+    def delete_user(self, user_name):
         self.user_psw.pop(user_name)
         self.save_user_psw_file()

@@ -412,10 +412,9 @@ class UserManager(QtWidgets.QWidget):
     @Slot()
     def delete_user_event(self, index):
         user = self.user_widget_list[index]
-        self.user_widget_list.remove(user)
         self.layout.removeWidget(user)
-        self.user.delect_user(user.user_name)
-        self.repaint()
+        self.user.delete_user(user.user_name)
+        user.deleteLater()
 
     @Slot()
     def add_user_event(self):
