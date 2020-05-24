@@ -6,6 +6,7 @@ from configparser import ConfigParser
 from multiprocessing import Event, Queue
 from os import getcwd
 from os.path import sep
+from threading import Thread
 from time import sleep, time
 
 from PySide2.QtCore import Slot, QRunnable
@@ -81,58 +82,23 @@ class ModelController(QRunnable):
 
         # 帧发送
         monitor_num = len(self.settings.monitor_config_list)
-        last_emit_frame_time = [time() for _ in range(monitor_num + 1)]
+        last_emit_frame_time = [time() for _ in range(monitor_num)]
         while not self.settings.if_end:
-            while time() - last_emit_frame_time[-1] < 0.03 * monitor_num:
-                sleep(0.01)
+            # while time() - last_emit_frame_time[-1] < 0.02:
+            #     sleep(0.01)
+            thread_list = list()
             for index, sign in enumerate(self.settings.monitor_play_state):
                 if sign:
-                    try:
-                        if type(sign) == bool:
-                            frame = self.video_reader_list[index].get_one_frame()
-                        else:
-                            frame = self.video_reader_list[index].get_one_frame(sign)
-                            self.settings.monitor_play_state[index] = False
-                    except EndOfVideoError:
-                        frame = ('视频已结束', None)
-                    result_rect_list = list()
-                    score_map_list = list()
-                    benckmark_list = None
-                    if self.settings.if_tracking:
-                        # 取模型结果
-                        if self.if_model:
-                            # 将当前帧输入到模型输入队列
-                            for i in self.model_input_queue_list:
-                                i.put(frame[0])
-                            # 取回模型结果
-                            for i in self.model_output_queue_list:
-                                tem_model_result = i.get()
-                                result_rect_list.append(tem_model_result[0])
-                                score_map_list.append((tem_model_result[1]))
+                    t = Thread(target=self.test, args=(sign, index, last_emit_frame_time))
+                    thread_list.append(t)
+                    t.start()
+                while len(thread_list) > 0:
+                    for t in thread_list:
+                        if not t.is_alive():
+                            thread_list.remove(t)
+                    sleep(0.005)
 
-                        if self.video_gt_list[index] and frame[1]:
-                            gt = self.video_gt_list[index][frame[1]]
-                            if self.if_model:
-                                benckmark_list = tuple(
-                                    (i[0],) + tuple((i[1].send((gt, j[0])), j[1]) for j in result_rect_list) for i in
-                                    self.benckmark_list)
-                            # 最后加入gt，防止在模型评价中计算gt自身
-                            result_rect_list.append((gt, 'green'))
-
-                    else:
-                        self.exit_event.set()
-                        self.if_model = False
-
-                    while time() - last_emit_frame_time[index] < 0.03:
-                        sleep(0.01)
-                    new_frame_config = FrameData(index, frame, result_rect_list, benckmark_list, score_map_list)
-                    try:
-                        self.emit_frame_signal.emit(new_frame_config)
-                    except RuntimeError:
-                        # 一般是由于界面退出导致
-                        print('模型控制类线程已退出')
-                    last_emit_frame_time[index] = time()
-            last_emit_frame_time[-1] = time()
+            # last_emit_frame_time[-1] = time()
         self.exit_event.set()
 
     @Slot(dict)
@@ -167,3 +133,49 @@ class ModelController(QRunnable):
                 print(f'反射失败 反射模块{i} 模块路径{path} 反射类{i} 失败原因{e}')
         self.if_model = True
 
+    def test(self, sign, index, last_emit_frame_time):
+        try:
+            if type(sign) == bool:
+                frame = self.video_reader_list[index].get_one_frame()
+            else:
+                frame = self.video_reader_list[index].get_one_frame(sign)
+                self.settings.monitor_play_state[index] = False
+        except EndOfVideoError:
+            frame = ('视频已结束', None)
+        result_rect_list = list()
+        score_map_list = list()
+        benckmark_list = None
+        if self.settings.if_tracking:
+            # 取模型结果
+            if self.if_model:
+                # 将当前帧输入到模型输入队列
+                for i in self.model_input_queue_list:
+                    i.put(frame[0])
+                # 取回模型结果
+                for i in self.model_output_queue_list:
+                    tem_model_result = i.get()
+                    result_rect_list.append(tem_model_result[0])
+                    score_map_list.append((tem_model_result[1]))
+
+            if self.video_gt_list[index] and frame[1]:
+                gt = self.video_gt_list[index][frame[1]]
+                if self.if_model:
+                    benckmark_list = tuple(
+                        (i[0],) + tuple((i[1].send((gt, j[0])), j[1]) for j in result_rect_list) for i in
+                        self.benckmark_list)
+                # 最后加入gt，防止在模型评价中计算gt自身
+                result_rect_list.append((gt, 'green'))
+
+        else:
+            self.exit_event.set()
+            self.if_model = False
+
+        while time() - last_emit_frame_time[index] < 0.04:
+            sleep(0.01)
+        new_frame_config = FrameData(index, frame, result_rect_list, benckmark_list, score_map_list)
+        try:
+            self.emit_frame_signal.emit(new_frame_config)
+        except RuntimeError:
+            # 一般是由于界面退出导致
+            print('模型控制类线程已退出')
+        last_emit_frame_time[index] = time()
