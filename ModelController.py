@@ -84,21 +84,22 @@ class ModelController(QRunnable):
         monitor_num = len(self.settings.monitor_config_list)
         last_emit_frame_time = [time() for _ in range(monitor_num)]
         while not self.settings.if_end:
-            # while time() - last_emit_frame_time[-1] < 0.02:
-            #     sleep(0.01)
             thread_list = list()
             for index, sign in enumerate(self.settings.monitor_play_state):
                 if sign:
-                    t = Thread(target=self.test, args=(sign, index, last_emit_frame_time))
+                    t = Thread(target=self.thread_for_frame_ready_and_emit, args=(sign, index, last_emit_frame_time))
                     thread_list.append(t)
                     t.start()
+                sleep_time = (last_emit_frame_time[-1] + (monitor_num - 1) * 0.03)-time()
+                if sleep_time > 0:
+                    sleep(sleep_time)
                 while len(thread_list) > 0:
                     for t in thread_list:
                         if not t.is_alive():
                             thread_list.remove(t)
                     sleep(0.005)
 
-            # last_emit_frame_time[-1] = time()
+            last_emit_frame_time[-1] = time()
         self.exit_event.set()
 
     @Slot(dict)
@@ -133,7 +134,7 @@ class ModelController(QRunnable):
                 print(f'反射失败 反射模块{i} 模块路径{path} 反射类{i} 失败原因{e}')
         self.if_model = True
 
-    def test(self, sign, index, last_emit_frame_time):
+    def thread_for_frame_ready_and_emit(self, sign, index, last_emit_frame_time):
         try:
             if type(sign) == bool:
                 frame = self.video_reader_list[index].get_one_frame()
@@ -156,7 +157,7 @@ class ModelController(QRunnable):
                     tem_model_result = i.get()
                     result_rect_list.append(tem_model_result[0])
                     score_map_list.append((tem_model_result[1]))
-
+            # 取gt信息和模型评价
             if self.video_gt_list[index] and frame[1]:
                 gt = self.video_gt_list[index][frame[1]]
                 if self.if_model:
@@ -165,7 +166,6 @@ class ModelController(QRunnable):
                         self.benckmark_list)
                 # 最后加入gt，防止在模型评价中计算gt自身
                 result_rect_list.append((gt, 'green'))
-
         else:
             self.exit_event.set()
             self.if_model = False

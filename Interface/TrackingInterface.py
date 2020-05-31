@@ -107,7 +107,9 @@ class TrackingWin(QtWidgets.QWidget):
         self.button.clicked.disconnect(self.tracking_last_object)
         self.button.setText('模型载入中')
         all_data = self.sub_win.get_all_data()
-        self.sub_win = None
+        self.sub_win.deleteLater()
+        self.sub_win = ModelLoading()
+        self.sub_win.show()
         self.model_init_signal.emit(all_data)
         self.model_state = 1
         self.change_play_state_signal.emit(self.index)
@@ -158,7 +160,8 @@ class TrackingWin(QtWidgets.QWidget):
             # 未选择跟踪目标
             self.settings.first_frame = frame
         elif self.model_state == 1:
-            # 选择完模型后
+            # 选择完模型后，并获得第一帧，即模型准备完成
+            self.sub_win.deleteLater()
             self.model_state = 2
             self.button.setEnabled(True)
             self.button.clicked.connect(self.pause_tracking)
@@ -203,7 +206,7 @@ class TrackingWin(QtWidgets.QWidget):
                 for benckmart in benckmark_list:
                     new_widget = QtCharts.QChartView()
                     height = self.size().toTuple()[1]
-                    new_widget.setFixedHeight(height/2)
+                    new_widget.setFixedHeight(height / 2)
                     new_widget.chart().setTitle(benckmart[0])
                     self.layout.addWidget(new_widget)
                     color_data_series = dict()
@@ -345,3 +348,18 @@ class ModelSelectWin(QtWidgets.QWidget):
 
     def closeEvent(self, event: QCloseEvent):
         self.close_signal.emit()
+
+
+class ModelLoading(QtWidgets.QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle('模型载入中')
+        self.label = QtWidgets.QLabel('模型载入中，请稍等')
+        self.process = QtWidgets.QProgressBar()
+        self.process.setMaximum(0)
+        self.process.setMinimum(0)
+
+        self.layout = QtWidgets.QVBoxLayout()
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.process)
+        self.setLayout(self.layout)
