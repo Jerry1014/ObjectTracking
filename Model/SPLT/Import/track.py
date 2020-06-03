@@ -49,6 +49,8 @@ pretrained_model = os.path.join(PROJECT_PATH, 'Verifier/ckpt/', v_name)
 
 class MobileTracker(object):
     def __init__(self, vot=False, dis=False):
+        tf.reset_default_graph()
+
         self.vot = vot
         self.dis = dis
 

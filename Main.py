@@ -2,6 +2,7 @@
 主文件，负责连接个部分和启动
 """
 import sys
+from time import sleep
 
 from PySide2 import QtWidgets
 from PySide2.QtCore import QThreadPool
@@ -26,6 +27,8 @@ class Start:
 
         app.exec_()
         self.settings.if_end = True
+        # fixme 临时措施
+        sleep(2)
         sys.exit(0)
 
 

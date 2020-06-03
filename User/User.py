@@ -50,7 +50,8 @@ class User:
     def change_psw(self, new_psw, user_name=None):
         self.user_psw[user_name if user_name else self.user_name] = new_psw
         self.save_user_psw_file()
-        self.save_record('修改了 ' + user_name if user_name else self.user_name + ' 的密码')
+        line = f'修改了 {user_name if user_name else self.user_name} 的密码'
+        self.save_record(line)
 
     def sign_in(self, user_name, psw):
         self.last_sign_in_user_name = user_name
@@ -72,3 +73,4 @@ class User:
     def delete_user(self, user_name):
         self.user_psw.pop(user_name)
         self.save_user_psw_file()
+        self.save_record('删除了用户 ' + user_name)

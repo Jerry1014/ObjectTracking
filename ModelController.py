@@ -75,7 +75,7 @@ class ModelController(QRunnable):
 
         # 新线程启动界面
         while self.settings.frame_update_signal is None:
-            sleep(0.5)
+            sleep(1)
             if self.settings.if_end:
                 return
         self.emit_frame_signal = self.settings.frame_update_signal
@@ -104,6 +104,9 @@ class ModelController(QRunnable):
 
     @Slot(dict)
     def init_object_tracking_model(self, model_name_list):
+        # 当前模型控制类使用多线程，为了给界面进程一点时间，避免无响应
+        # sleep(5)
+
         self.exit_event.clear()
         self.model_output_queue_list = list()
         self.model_input_queue_list = list()
@@ -111,9 +114,6 @@ class ModelController(QRunnable):
         cf = ConfigParser()
         cf.read('./Model/ModelConfig.ini')
         for i in model_name_list.keys():
-            # 当前模型控制类使用多线程，为了给界面进程一点时间，避免无响应
-            sleep(0.1)
-
             path = cf[i]['path']
             if path not in sys.path:
                 path = sep.join([getcwd(), 'Model'] + path.split(' '))

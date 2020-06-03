@@ -76,7 +76,7 @@ class MonitoringInterface(QtWidgets.QWidget):
                 self.monitor_list[enu_index].button_event()
         self.sub_win = TrackingWin(index, self.settings, self.model_init_signal, self.change_play_process,
                                    self.after_close_tracking, self.change_play_state, slider_max_num,
-                                   self.start_tracking)
+                                   self.start_tracking, self.after_close_tracking)
         self.change_play_process(index, slider_value)
         self.sub_win.show()
         self.sub_win.activateWindow()
@@ -293,7 +293,7 @@ class UserInterface(QtWidgets.QWidget):
 
     @Slot()
     def user_manager(self):
-        model_choose_win = UserManager(self.user)
+        model_choose_win = UserManager(self.user, self.add_a_new_record)
         model_choose_win.show()
         model_choose_win.activateWindow()
         self.sub_win = model_choose_win
@@ -331,7 +331,7 @@ class UserDialog(QtWidgets.QDialog):
             self.user.sign_in(self.user_name_edit.text(), self.psw_edit.text())
             self.close()
         elif self.method == '修改密码':
-            self.user.change_psw(self.psw_edit.text())
+            self.user.change_psw(self.psw_edit.text(), self.user_name_edit.text())
             self.close()
         else:
             try:
@@ -383,17 +383,20 @@ class UserManager(QtWidgets.QWidget):
     change_psw_signal = Signal(int)
     delete_user_signal = Signal(int)
 
-    def __init__(self, user: User):
+    def __init__(self, user: User, add_record_function):
         super().__init__()
+        self.add_record = add_record_function
         self.user = user
         self.layout = QtWidgets.QVBoxLayout()
         self.user_widget_list = list()
 
         for index, (user, psw) in enumerate(self.user.user_psw.items()):
             if user != self.user.admin_name:
-                new_user = AUserManager(index-1, user, psw, self.change_psw_signal, self.delete_user_signal)
+                new_user = AUserManager(index, user, psw, self.change_psw_signal, self.delete_user_signal)
                 self.user_widget_list.append(new_user)
                 self.layout.addWidget(new_user)
+            else:
+                self.user_widget_list.append(None)
 
         self.add_user_button = QtWidgets.QPushButton('添加用户')
         self.layout.addWidget(self.add_user_button)
@@ -408,6 +411,7 @@ class UserManager(QtWidgets.QWidget):
         user_name = self.user_widget_list[index].user_name
         UserDialog(self.user, '修改密码', user_name).exec_()
         self.user_widget_list[index].chang_psw_label_text(self.user.user_psw[user_name])
+
 
     @Slot()
     def delete_user_event(self, index):

@@ -1,4 +1,5 @@
 from configparser import ConfigParser
+from time import sleep
 
 import numpy as np
 
@@ -14,10 +15,11 @@ class TrackingWin(QtWidgets.QWidget):
     change_play_process_signal = Signal(int, int)
     after_close_tracking_signal = Signal()
     change_play_state_signal = Signal(int)
+    stop_tracking_signal = Signal()
     restart_tracking_signal = Signal(tuple)
 
     def __init__(self, index, settings, model_init_signal, change_play_process_slot, after_close_tracking_slot,
-                 change_play_state_slot, slider_max_num, start_tracking_slot):
+                 change_play_state_slot, slider_max_num, start_tracking_slot, after_close_tracking):
         super().__init__()
         self.setWindowTitle('目标跟踪')
         self.index = index
@@ -52,6 +54,7 @@ class TrackingWin(QtWidgets.QWidget):
         self.after_close_tracking_signal.connect(after_close_tracking_slot)
         self.change_play_state_signal.connect(change_play_state_slot)
         self.restart_tracking_signal.connect(start_tracking_slot)
+        self.stop_tracking_signal.connect(after_close_tracking)
         self.re_init_button.clicked.connect(self.re_init_model)
         self.button.clicked.connect(self.tracking_last_object)
 
@@ -117,6 +120,7 @@ class TrackingWin(QtWidgets.QWidget):
     @Slot()
     def re_init_model(self):
         self.close()
+        self.stop_tracking_signal.emit()
         self.restart_tracking_signal.emit((self.index, self.last_frame, self.slider.value(), self.slider_max_num))
 
     @Slot()
