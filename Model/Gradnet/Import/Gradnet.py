@@ -169,11 +169,6 @@ def getSubWinTracking(img, pos, modelSz, originalSz, avgChans):
 
 
 def makeScalePyramid(im, targetPosition, in_side_scaled, out_side, avgChans, stats, p):
-    """
-    computes a pyramid of re-scaled copies of the target (centered on TARGETPOSITION)
-    and resizes them to OUT_SIDE. If crops exceed image boundaries they are padded with AVGCHANS.
-
-    """
     in_side_scaled = np.round(in_side_scaled)
     max_target_side = int(round(in_side_scaled[-1]))
     min_target_side = int(round(in_side_scaled[0]))
@@ -277,15 +272,14 @@ class Gradnet(Process):
         # opts:设置字典
         opts = getOpts(dict())
 
-        '''define input tensors and network'''
+        # 定义输入输出节点
         exemplarOp_init = tf.placeholder(tf.float32, [1, opts['exemplarSize'], opts['exemplarSize'], 3])
         instanceOp_init = tf.placeholder(tf.float32, [1, opts['instanceSize'], opts['instanceSize'], 3])
         instanceOp = tf.placeholder(tf.float32, [3, opts['instanceSize'], opts['instanceSize'], 3])
         isTrainingOp = tf.convert_to_tensor(False, dtype='bool', name='is_training')
         sn = SiameseNet()
 
-        '''build the model'''
-        # initial embedding
+        # 建立模型计算图
         with tf.variable_scope('siamese') as scope:
             zFeat2Op_init, zFeat5Op_init = sn.extract_gra_fea_template(exemplarOp_init, opts, isTrainingOp)
             scoreOp_init = sn.response_map_cal(instanceOp_init, zFeat5Op_init, opts, isTrainingOp)
@@ -308,7 +302,7 @@ class Gradnet(Process):
             scoreOp_sia = sn.response_map_cal(instanceOp, zFeat5Op_sia, opts, isTrainingOp)
             scoreOp_gra = sn.response_map_cal(tf.expand_dims(instanceOp[1], 0), zFeat5Op_gra, opts, isTrainingOp)
 
-        '''restore pretrained network'''
+        # 载入权重
         saver = tf.train.Saver()
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -355,7 +349,7 @@ class Gradnet(Process):
             [opts['scaleStep'] ** i for i in range(int(np.ceil(opts['numScale'] / 2.0) - opts['numScale']),
                                                    int(np.floor(opts['numScale'] / 2.0) + 1))])
 
-        '''initialization at the first frame'''
+        # 初始帧的初始化
         xCrops = makeScalePyramid(im, targetPosition, sx * scales, opts['instanceSize'], avgChans, None, opts)
         xCrops0 = np.expand_dims(xCrops[1], 0)
         zCrop = np.expand_dims(zCrop, axis=0)
@@ -444,7 +438,7 @@ class Gradnet(Process):
 
                     refind = 0
 
-                '''use the average of the first five frames to set the threshold'''
+                # 设置可信阈值
                 if i < 6:
                     F_max_all = F_max_all + F_max
                 if i == 5:
@@ -452,7 +446,7 @@ class Gradnet(Process):
             else:
                 pass
 
-            '''tracking results'''
+            # 模型跟踪结果
             rectPosition = targetPosition - targetSize / 2.
             Position_now = np.concatenate(
                 [np.round(rectPosition).astype(int)[::-1], np.round(targetSize).astype(int)[::-1]], 0)
@@ -460,7 +454,7 @@ class Gradnet(Process):
             if Position_now[0] + Position_now[2] > im.shape[1] and F_max < F_max_thred * 0.5:
                 refind = 1
 
-            '''save the reliable training sample'''
+            # 保存可信训练对
             if F_max >= min(F_max_thred * 0.5, np.mean(updata_features_score)):
                 scaledInstance = sx * scales
                 xCrops = makeScalePyramid(im, targetPosition, scaledInstance, opts['instanceSize'], avgChans, None,
@@ -482,7 +476,7 @@ class Gradnet(Process):
                                                                    instanceOp_init: np.expand_dims(xCrops[1], 0)})
                     hid_gra = np.copy(0.3 * hid_gra + 0.7 * zFeat2_gra)
 
-            '''update the template every 5 frames'''
+            # 每5帧，更新一下模板
 
             if i % 5 == 0:
                 template_gra, zFeat2_gra = sess.run([zFeat5Op_gra, zFeat2Op_gra],

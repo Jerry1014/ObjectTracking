@@ -27,7 +27,7 @@ class Start:
 
         app.exec_()
         self.settings.if_end = True
-        # fixme 临时措施
+        # 稍作等待，确保其他线程已经退出
         sleep(2)
         sys.exit(0)
 

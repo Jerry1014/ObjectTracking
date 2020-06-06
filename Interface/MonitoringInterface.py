@@ -256,7 +256,6 @@ class UserInterface(QtWidgets.QWidget):
 
         if self.user.user_name is None:
             exit_signal.emit()
-            # fixme 软件多线程并不能完全退出
             exit(0)
             return
 
