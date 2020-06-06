@@ -170,8 +170,11 @@ class ModelController(QRunnable):
             self.exit_event.set()
             self.if_model = False
 
-        while time() - last_emit_frame_time[index] < 0.04:
-            sleep(0.01)
+        # while time() - last_emit_frame_time[index] < 0.04:
+        #     sleep(0.01)
+        sleep_time = (last_emit_frame_time[index] + 0.03) - time()
+        if sleep_time > 0:
+            sleep(sleep_time)
         new_frame_config = FrameData(index, frame, result_rect_list, benckmark_list, score_map_list)
         try:
             self.emit_frame_signal.emit(new_frame_config)
